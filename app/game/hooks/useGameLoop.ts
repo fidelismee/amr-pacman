@@ -22,7 +22,12 @@ export const useGameLoop = ({ tickInterval = 200, onTick }: UseGameLoopProps = {
   // Handle keyboard input
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isRunning) return;
+      // Prevent default behavior for arrow keys and space to avoid page scrolling
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+        e.preventDefault();
+      }
+      
+      if (!isRunning && e.key !== ' ') return;
       
       switch (e.key) {
         case 'ArrowUp':
@@ -39,6 +44,10 @@ export const useGameLoop = ({ tickInterval = 200, onTick }: UseGameLoopProps = {
           break;
         case ' ':
           setIsRunning(prev => !prev);
+          break;
+        case 'r':
+        case 'R':
+          // Restart game - handled by parent component
           break;
       }
     };

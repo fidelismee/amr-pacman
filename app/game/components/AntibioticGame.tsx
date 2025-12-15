@@ -28,7 +28,7 @@ const AntibioticGame = () => {
   const [gameMessage, setGameMessage] = useState<string>('');
 
   // Game loop hook
-  const { getCurrentDirection, isRunning } = useGameLoop({
+  const { getCurrentDirection, isRunning, setDirection } = useGameLoop({
     tickInterval: 200,
     onTick: () => {
       if (!gameActive) return;
@@ -54,6 +54,17 @@ const AntibioticGame = () => {
       checkCollisions();
     },
   });
+
+  // Handle focus for keyboard events
+  const [hasFocus, setHasFocus] = useState(false);
+  
+  const handleFocus = () => {
+    setHasFocus(true);
+  };
+  
+  const handleBlur = () => {
+    setHasFocus(false);
+  };
 
   // Initialize game
   const initializeGame = useCallback(() => {
@@ -211,18 +222,48 @@ const AntibioticGame = () => {
           {/* Left column: Game board */}
           <div className="flex-1">
             <div className="relative">
-              <GameBoard level={level} cellSize={CELL_SIZE} />
-              <EntityLayer
-                antibioticPosition={antibioticPosition}
-                antibioticDirection={getCurrentDirection()}
-                bacteriaPositions={bacteriaPositions}
-                poweredUp={poweredUp}
-                cellSize={CELL_SIZE}
+              {/* Focus indicator */}
+              <div 
+                className={`absolute -inset-2 rounded-xl transition-all duration-300 z-10 pointer-events-none ${
+                  hasFocus 
+                    ? 'ring-4 ring-blue-500/50 bg-blue-500/10' 
+                    : 'ring-2 ring-gray-700/30'
+                }`}
               />
+              
+              {/* Click to focus area */}
+              <div
+                className="relative cursor-pointer"
+                onClick={handleFocus}
+                onBlur={handleBlur}
+                tabIndex={0}
+              >
+                <GameBoard level={level} cellSize={CELL_SIZE} />
+                <EntityLayer
+                  antibioticPosition={antibioticPosition}
+                  antibioticDirection={getCurrentDirection()}
+                  bacteriaPositions={bacteriaPositions}
+                  poweredUp={poweredUp}
+                  cellSize={CELL_SIZE}
+                />
+                
+                {/* Focus instructions */}
+                {!hasFocus && (
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-lg">
+                    <div className="text-center p-6 bg-gray-900/90 rounded-xl border-2 border-blue-500/50">
+                      <h3 className="text-2xl font-bold mb-3 text-blue-300">Click to Focus</h3>
+                      <p className="text-gray-300 mb-4">Click on the game board to enable keyboard controls</p>
+                      <div className="text-sm text-gray-400">
+                        Then use arrow keys to move
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
               
               {/* Game overlay messages */}
               {!gameActive && (
-                <div className="absolute inset-0 bg-black/80 flex items-center justify-center rounded-lg">
+                <div className="absolute inset-0 bg-black/80 flex items-center justify-center rounded-lg z-20">
                   <div className="text-center p-8 bg-gray-900/90 rounded-xl border-2 border-blue-500/50">
                     <h2 className="text-3xl font-bold mb-4">{gameMessage}</h2>
                     <button
@@ -234,6 +275,20 @@ const AntibioticGame = () => {
                   </div>
                 </div>
               )}
+            </div>
+            
+            {/* Focus status */}
+            <div className="mt-4 text-center">
+              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${
+                hasFocus 
+                  ? 'bg-green-900/30 text-green-400 border border-green-700/50' 
+                  : 'bg-yellow-900/30 text-yellow-400 border border-yellow-700/50'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${hasFocus ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`} />
+                <span className="text-sm font-medium">
+                  {hasFocus ? 'Keyboard controls active' : 'Click game board to activate controls'}
+                </span>
+              </div>
             </div>
           </div>
 
