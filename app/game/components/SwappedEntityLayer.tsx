@@ -38,6 +38,9 @@ const SwappedEntityLayer = memo(({
     return colors[index % colors.length];
   };
 
+  // GameBoard has p-2 (8px) padding, so we need to offset entities by 8px
+  const gridOffset = 8;
+
   return (
     <div className="absolute inset-0 pointer-events-none">
       {/* Bacteria (Player - now looks like blob) */}
@@ -50,8 +53,8 @@ const SwappedEntityLayer = memo(({
         style={{
           width: `${cellSize * 0.8}px`,
           height: `${cellSize * 0.8}px`,
-          left: `${bacteriaPosition.x * cellSize + cellSize * 0.1}px`,
-          top: `${bacteriaPosition.y * cellSize + cellSize * 0.1}px`,
+          left: `${bacteriaPosition.x * cellSize + cellSize * 0.1 + gridOffset}px`,
+          top: `${bacteriaPosition.y * cellSize + cellSize * 0.1 + gridOffset}px`,
         }}
       >
         {/* Bacteria details */}
@@ -85,8 +88,8 @@ const SwappedEntityLayer = memo(({
           style={{
             width: `${cellSize * 0.7}px`,
             height: `${cellSize * 0.7}px`,
-            left: `${pos.x * cellSize + cellSize * 0.15}px`,
-            top: `${pos.y * cellSize + cellSize * 0.15}px`,
+            left: `${pos.x * cellSize + cellSize * 0.15 + gridOffset}px`,
+            top: `${pos.y * cellSize + cellSize * 0.15 + gridOffset}px`,
             animationDelay: `${index * 0.2}s`,
           }}
         >
