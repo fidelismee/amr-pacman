@@ -1,5 +1,5 @@
-import PacmanGame from './components/PacmanGame';
+import AntibioticGame from './game/components/AntibioticGame';
 
 export default function Home() {
-  return <PacmanGame />;
+  return <AntibioticGame />;
 }
