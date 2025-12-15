@@ -1,5 +1,5 @@
-import AntibioticGame from './game/components/AntibioticGame';
+import BacteriaGame from './game/components/BacteriaGame';
 
 export default function Home() {
-  return <AntibioticGame />;
+  return <BacteriaGame />;
 }
