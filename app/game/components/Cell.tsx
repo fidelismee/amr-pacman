@@ -1,3 +1,4 @@
+// app/game/components/Cell.tsx
 "use client";
 
 import { memo } from 'react';

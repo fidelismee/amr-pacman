@@ -1,3 +1,4 @@
+// app/game/components/GameBoard.tsx
 "use client";
 
 import { memo } from 'react';

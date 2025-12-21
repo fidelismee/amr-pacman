@@ -1,3 +1,4 @@
+// app/game/components/SwappedEntityLayer.tsx
 "use client";
 
 import { memo } from 'react';

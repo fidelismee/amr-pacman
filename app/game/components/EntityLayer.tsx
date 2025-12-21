@@ -1,3 +1,4 @@
+// app/game/components/EntityLayer.tsx
 "use client";
 
 import { memo } from 'react';

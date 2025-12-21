@@ -1,3 +1,4 @@
+// app/game/components/GameBoardContainer.tsx
 "use client";
 
 import { ReactNode } from 'react';

@@ -1,4 +1,4 @@
-import type { NextConfig } from "next";
+// next.config.ts
 import withPWA from "next-pwa";
 
 const nextConfig: NextConfig = {

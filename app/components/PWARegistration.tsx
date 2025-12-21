@@ -1,3 +1,4 @@
+// app/components/PWARegistration.tsx
 "use client";
 
 import { useEffect } from 'react';

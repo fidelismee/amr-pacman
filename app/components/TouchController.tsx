@@ -1,3 +1,4 @@
+// app/components/TouchController.tsx
 "use client";
 
 import { Direction } from '../game/hooks/useGameLoop';

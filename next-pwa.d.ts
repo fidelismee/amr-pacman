@@ -1,4 +1,4 @@
-declare module 'next-pwa' {
+// next-pwa.d.ts
   import { NextConfig } from 'next';
   
   interface PWAConfig {

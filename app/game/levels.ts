@@ -1,3 +1,4 @@
+// app/game/levels.ts
 // Level data for Antibiotic Defender game
 // 0 = Path/Infected Cell (dot)
 // 1 = Membrane/Wall

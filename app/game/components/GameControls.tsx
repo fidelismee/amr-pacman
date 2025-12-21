@@ -1,3 +1,4 @@
+// app/game/components/GameControls.tsx
 "use client";
 
 interface GameControlsProps {

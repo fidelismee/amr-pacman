@@ -1,3 +1,4 @@
+// app/game/components/GameLegend.tsx
 "use client";
 
 const GameLegend = () => {

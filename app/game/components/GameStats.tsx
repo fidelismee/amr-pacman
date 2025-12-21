@@ -1,3 +1,4 @@
+// app/game/components/GameStats.tsx
 "use client";
 
 interface GameStatsProps {

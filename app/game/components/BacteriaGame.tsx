@@ -1,3 +1,4 @@
+// app/game/components/BacteriaGame.tsx
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
