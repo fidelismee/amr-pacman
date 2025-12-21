@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import PWARegistration from "./components/PWARegistration";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,15 +49,24 @@ export default function RootLayout({
         <meta name="msapplication-TileColor" content="#1a1a2e" />
         <meta name="msapplication-tap-highlight" content="no" />
         
+        {/* Additional PWA meta tags */}
+        <meta name="theme-color" content="#1a1a2e" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/icon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/icon-16x16.png" />
         <link rel="shortcut icon" href="/favicon.ico" />
+        
+        {/* Prevent zoom on mobile */}
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <PWARegistration />
       </body>
     </html>
   );
