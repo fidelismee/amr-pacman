@@ -39,21 +39,13 @@ const SwappedEntityLayer = memo(({
     return colors[index % colors.length];
   };
 
-  // Calculate grid offset to account for GameBoard padding and centering
-  // GameBoard has p-2 (8px) padding and border-2 (2px) on all sides
-  // Grid is centered horizontally with flex justify-center
-  const padding = 8; // p-2 = 0.5rem = 8px
-  const borderWidth = 2; // border-2 = 2px
-  const totalHorizontalExtra = (padding + borderWidth) * 2; // Both sides
-  const gridOffsetX = totalHorizontalExtra / 2; // Grid is centered horizontally
-  const gridOffsetY = padding + borderWidth; // Grid is at top with padding+border
-
   // Calculate centered positions
   const bacteriaSize = cellSize * 0.8;
   const antibioticSize = cellSize * 0.7;
   
-  const bacteriaLeft = bacteriaPosition.x * cellSize + (cellSize - bacteriaSize) / 2 + gridOffsetX;
-  const bacteriaTop = bacteriaPosition.y * cellSize + (cellSize - bacteriaSize) / 2 + gridOffsetY;
+  // Center the entity within the cell
+  const bacteriaOffset = (cellSize - bacteriaSize) / 2;
+  const antibioticOffset = (cellSize - antibioticSize) / 2;
 
   return (
     <div className="absolute inset-0 pointer-events-none">
@@ -67,8 +59,9 @@ const SwappedEntityLayer = memo(({
         style={{
           width: `${bacteriaSize}px`,
           height: `${bacteriaSize}px`,
-          left: `${bacteriaLeft}px`,
-          top: `${bacteriaTop}px`,
+          transform: `translate(${bacteriaPosition.x * cellSize + bacteriaOffset}px, ${bacteriaPosition.y * cellSize + bacteriaOffset}px)`,
+          left: 0,
+          top: 0,
         }}
       >
         {/* Bacteria details */}
@@ -91,39 +84,35 @@ const SwappedEntityLayer = memo(({
       </div>
 
       {/* Antibiotics (Enemies - now look like pills) */}
-      {antibioticPositions.map((pos, index) => {
-        const antibioticLeft = pos.x * cellSize + (cellSize - antibioticSize) / 2 + gridOffsetX;
-        const antibioticTop = pos.y * cellSize + (cellSize - antibioticSize) / 2 + gridOffsetY;
-        
-        return (
-          <div
-            key={index}
-            className={`absolute rounded-full animate-bounce ${
-              poweredUp 
-                ? 'opacity-50 grayscale' 
-                : `bg-gradient-to-r ${getAntibioticColor(index)}`
-            }`}
-            style={{
-              width: `${antibioticSize}px`,
-              height: `${antibioticSize}px`,
-              left: `${antibioticLeft}px`,
-              top: `${antibioticTop}px`,
-              animationDelay: `${index * 0.2}s`,
-            }}
-          >
-            {/* Pill shape details */}
-            <div className="absolute w-1 h-3 bg-white/80 rounded-full left-2 top-1/2 transform -translate-y-1/2"></div>
-            <div className="absolute w-1 h-3 bg-white/80 rounded-full right-2 top-1/2 transform -translate-y-1/2"></div>
-            
-            {/* Scared effect when bacteria is powered up */}
-            {poweredUp && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-xs font-bold text-green-300">!</div>
-              </div>
-            )}
-          </div>
-        );
-      })}
+      {antibioticPositions.map((pos, index) => (
+        <div
+          key={index}
+          className={`absolute rounded-full animate-bounce ${
+            poweredUp 
+              ? 'opacity-50 grayscale' 
+              : `bg-gradient-to-r ${getAntibioticColor(index)}`
+          }`}
+          style={{
+            width: `${antibioticSize}px`,
+            height: `${antibioticSize}px`,
+            transform: `translate(${pos.x * cellSize + antibioticOffset}px, ${pos.y * cellSize + antibioticOffset}px)`,
+            left: 0,
+            top: 0,
+            animationDelay: `${index * 0.2}s`,
+          }}
+        >
+          {/* Pill shape details */}
+          <div className="absolute w-1 h-3 bg-white/80 rounded-full left-2 top-1/2 transform -translate-y-1/2"></div>
+          <div className="absolute w-1 h-3 bg-white/80 rounded-full right-2 top-1/2 transform -translate-y-1/2"></div>
+          
+          {/* Scared effect when bacteria is powered up */}
+          {poweredUp && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-xs font-bold text-green-300">!</div>
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 });
