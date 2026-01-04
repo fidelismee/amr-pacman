@@ -483,9 +483,67 @@ const BacteriaGame = () => {
                 </div>
               </div>
             </div>
+
+            {/* Arrow Key Controls - Positioned below game board */}
+            <div className="mt-6 w-full max-w-md">
+              <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                <h3 className="text-lg font-bold mb-4 text-green-300 text-center">Arrow Key Controls</h3>
+                
+                <div className="flex flex-col items-center">
+                  {/* Up arrow */}
+                  <div className="mb-2">
+                    <button
+                      onClick={() => nextDirectionRef.current = 'up'}
+                      className="w-20 h-20 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
+                    >
+                      <div className="text-4xl">↑</div>
+                    </button>
+                    <div className="text-center text-sm text-gray-400 mt-1">Up</div>
+                  </div>
+                  
+                  {/* Middle row: Left, Down, Right */}
+                  <div className="flex items-center gap-6">
+                    <div>
+                      <button
+                        onClick={() => nextDirectionRef.current = 'left'}
+                        className="w-20 h-20 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
+                      >
+                        <div className="text-4xl">←</div>
+                      </button>
+                      <div className="text-center text-sm text-gray-400 mt-1">Left</div>
+                    </div>
+                    
+                    <div>
+                      <button
+                        onClick={() => nextDirectionRef.current = 'down'}
+                        className="w-20 h-20 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
+                      >
+                        <div className="text-4xl">↓</div>
+                      </button>
+                      <div className="text-center text-sm text-gray-400 mt-1">Down</div>
+                    </div>
+                    
+                    <div>
+                      <button
+                        onClick={() => nextDirectionRef.current = 'right'}
+                        className="w-20 h-20 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
+                      >
+                        <div className="text-4xl">→</div>
+                      </button>
+                      <div className="text-center text-sm text-gray-400 mt-1">Right</div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-4 text-sm text-gray-400 text-center">
+                    <p>Use arrow keys or click buttons to move</p>
+                    <p className="text-xs text-gray-500 mt-1">Space = Pause • R = Restart</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Stats and Controls */}
+          {/* Stats Panel */}
           <div className="lg:w-72 w-full space-y-4">
             <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
               <div className="flex justify-between mb-2">
@@ -500,75 +558,27 @@ const BacteriaGame = () => {
                   ))}
                 </div>
               </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-400">Nutrients</span>
+                <span className="text-xl font-bold text-green-300">{remainingNutrients}</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-400">Boosters</span>
+                <span className="text-xl font-bold text-blue-300">{remainingBoosters}</span>
+              </div>
               <div className="text-xs text-center text-gray-500 mt-4">
                 Red = Enemy <br/> Blue = Booster
-              </div>
-            </div>
-
-            {/* Arrow Key Controls */}
-            <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-              <h3 className="text-lg font-bold mb-3 text-green-300">Controls</h3>
-              
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                <div className="col-start-2">
-                  <button
-                    onClick={() => nextDirectionRef.current = 'up'}
-                    className="w-full aspect-square flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
-                  >
-                    <div className="text-2xl">↑</div>
-                  </button>
-                  <div className="text-center text-sm text-gray-400 mt-1">Up</div>
-                </div>
-                
-                <div>
-                  <button
-                    onClick={() => nextDirectionRef.current = 'left'}
-                    className="w-full aspect-square flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
-                  >
-                    <div className="text-2xl">←</div>
-                  </button>
-                  <div className="text-center text-sm text-gray-400 mt-1">Left</div>
-                </div>
-                
-                <div className="col-start-2 row-start-3">
-                  <button
-                    onClick={() => nextDirectionRef.current = 'down'}
-                    className="w-full aspect-square flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
-                  >
-                    <div className="text-2xl">↓</div>
-                  </button>
-                  <div className="text-center text-sm text-gray-400 mt-1">Down</div>
-                </div>
-                
-                <div className="row-start-2">
-                  <button
-                    onClick={() => nextDirectionRef.current = 'right'}
-                    className="w-full aspect-square flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
-                  >
-                    <div className="text-2xl">→</div>
-                  </button>
-                  <div className="text-center text-sm text-gray-400 mt-1">Right</div>
-                </div>
-              </div>
-              
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-300">Space</span>
-                  <span className="text-green-300">Pause/Resume</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-300">R Key</span>
-                  <span className="text-green-300">Restart Game</span>
-                </div>
-                <div className="text-xs text-gray-500 text-center mt-2">
-                  Click arrows or use keyboard
-                </div>
               </div>
             </div>
 
             <button onClick={initializeGame} className="w-full py-3 bg-gray-700 hover:bg-gray-600 rounded font-bold">Restart (R)</button>
           </div>
         </div>
+
+        <footer className="mt-8 text-center text-gray-500 text-sm">
+          <p>Move the bacteria with arrow keys or on-screen controls. Eat all green dots to win!</p>
+          <p className="mt-2">Avoid red antibiotics unless you have a blue booster active.</p>
+        </footer>
       </div>
     </div>
   );
