@@ -1,8 +1,9 @@
-// app\game\components\BacteriaGame.tsx
+// app/game/components/BacteriaGame.tsx
+
 "use client";
 
-import { useState, useCallback } from 'react';
-import { useGameLoop, Position } from '../hooks/useGameLoop'; // Ensure path is correct
+import { useState, useCallback, useRef } from 'react';
+import { useGameLoop, Position, Direction } from '../hooks/useGameLoop'; // Ensure path is correct
 import GameBoard from './GameBoard';
 import SwappedEntityLayer from './SwappedEntityLayer';
 import GameStats from './GameStats';
@@ -34,6 +35,11 @@ const BacteriaGame = () => {
   const [powerUpTimer, setPowerUpTimer] = useState(0);
   const [gameMessage, setGameMessage] = useState<string>('');
   const [hasFocus, setHasFocus] = useState(false);
+
+  // Store current direction for each antibiotic (inertia/memory)
+  const antibioticDirectionsRef = useRef<Direction[]>(
+    BACTERIA_STARTS.map(() => 'right') // Default starting direction
+  );
 
   // --- Calculate Board Pixel Size for alignment ---
   const boardPixelWidth = GRID_WIDTH * CELL_SIZE;
@@ -68,6 +74,8 @@ const BacteriaGame = () => {
     setLevel(LEVEL_1.map(row => [...row]));
     setBacteriaPosition(ANTIBIOTIC_START);
     setAntibioticPositions(BACTERIA_STARTS.map(pos => ({ ...pos })));
+    // Reset antibiotic directions to default
+    antibioticDirectionsRef.current = BACTERIA_STARTS.map(() => 'right');
     setScore(0);
     setLives(3);
     setGameActive(true);
@@ -155,32 +163,67 @@ const BacteriaGame = () => {
 
   const moveAntibiotics = () => {
     setAntibioticPositions(prev => {
-      // Create a set of occupied positions for collision checking
-      const occupied = new Set(prev.map(p => `${p.x},${p.y}`));
-      
-      const newPositions = prev.map(antibiotic => {
-        const directions = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }];
+      const newPositions = prev.map((antibiotic, index) => {
+        // Get current direction for this antibiotic
+        const currentDir = antibioticDirectionsRef.current[index];
         
-        // Filter valid moves: not a wall and not occupied by another antibiotic
-        const validMoves = directions.filter(dir => {
-          const newX = antibiotic.x + dir.x;
-          const newY = antibiotic.y + dir.y;
-          return canMoveTo(newX, newY) && !occupied.has(`${newX},${newY}`);
-        });
+        // Define direction vectors with their corresponding Direction type
+        const directionVectors: { dir: Direction, x: number, y: number }[] = [
+          { dir: 'up', x: 0, y: -1 },
+          { dir: 'down', x: 0, y: 1 },
+          { dir: 'left', x: -1, y: 0 },
+          { dir: 'right', x: 1, y: 0 },
+        ];
         
-        if (validMoves.length === 0) {
-          // If no valid moves that avoid other antibiotics, try moves that might overlap
-          const fallbackMoves = directions.filter(dir => 
-            canMoveTo(antibiotic.x + dir.x, antibiotic.y + dir.y)
-          );
-          if (fallbackMoves.length === 0) return antibiotic;
-          const move = fallbackMoves[Math.floor(Math.random() * fallbackMoves.length)];
-          return { x: antibiotic.x + move.x, y: antibiotic.y + move.y };
+        // First, try to continue in current direction if possible
+        const currentVector = directionVectors.find(v => v.dir === currentDir);
+        if (currentVector && canMoveTo(antibiotic.x + currentVector.x, antibiotic.y + currentVector.y)) {
+          // Continue in same direction
+          const newPos = { 
+            x: antibiotic.x + currentVector.x, 
+            y: antibiotic.y + currentVector.y 
+          };
+          return newPos;
         }
         
-        const move = validMoves[Math.floor(Math.random() * validMoves.length)];
-        return { x: antibiotic.x + move.x, y: antibiotic.y + move.y };
+        // Current direction is blocked, need to choose a new direction
+        // Filter valid moves (not walls)
+        const validMoves = directionVectors.filter(v => 
+          canMoveTo(antibiotic.x + v.x, antibiotic.y + v.y)
+        );
+        
+        if (validMoves.length === 0) {
+          // Dead end, can't move
+          return antibiotic;
+        }
+        
+        // Prevent backtracking (180-degree turns)
+        // Determine opposite direction
+        let oppositeDir: Direction | null = null;
+        switch (currentDir) {
+          case 'up': oppositeDir = 'down'; break;
+          case 'down': oppositeDir = 'up'; break;
+          case 'left': oppositeDir = 'right'; break;
+          case 'right': oppositeDir = 'left'; break;
+        }
+        
+        // Filter out the opposite direction unless it's the only option
+        const nonBacktrackMoves = validMoves.filter(v => v.dir !== oppositeDir);
+        const movesToChooseFrom = nonBacktrackMoves.length > 0 ? nonBacktrackMoves : validMoves;
+        
+        // Choose random direction from available options
+        const chosenMove = movesToChooseFrom[Math.floor(Math.random() * movesToChooseFrom.length)];
+        
+        // Update direction for this antibiotic
+        antibioticDirectionsRef.current[index] = chosenMove.dir;
+        
+        // Return new position
+        return { 
+          x: antibiotic.x + chosenMove.x, 
+          y: antibiotic.y + chosenMove.y 
+        };
       });
+      
       return newPositions;
     });
   };

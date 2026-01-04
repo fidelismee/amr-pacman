@@ -1,4 +1,5 @@
-// app\game\components\GameBoard.tsx
+// app/game/components/GameBoardContainer.tsx
+
 "use client";
 
 import { ReactNode, useEffect, useState, useRef } from 'react';
