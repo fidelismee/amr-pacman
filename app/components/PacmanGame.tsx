@@ -2,6 +2,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+// Note: If you want to use the component EntityLayer, uncomment the import below
+// import EntityLayer from '../game/components/EntityLayer';
 
 const GRID_SIZE = 19;
 const CELL_SIZE = 20;
@@ -155,14 +157,16 @@ const AntibioticGame = () => {
           <div className="flex-1">
             <div className="bg-white p-4 rounded-2xl shadow-2xl border-2 border-blue-200">
               <div className="relative bg-gradient-to-br from-blue-100 to-cyan-100 rounded-lg p-2">
-                <div className="flex justify-center">
+                {/* FIX: Added overflow-auto to handle small screens without shrinking grid cells */}
+                <div className="flex justify-center overflow-auto">
                   <div 
-                    className="relative grid gap-0 border-2 border-blue-300 rounded-lg"
+                    // FIX: Added 'shrink-0' to prevent grid from squashing
+                    className="relative grid gap-0 border-2 border-blue-300 rounded-lg shrink-0"
                     style={{
                       gridTemplateColumns: `repeat(${GRID_SIZE}, ${CELL_SIZE}px)`,
                       width: `${GRID_SIZE * CELL_SIZE}px`,
                       height: `${GRID_SIZE * CELL_SIZE}px`,
-                      maxWidth: '100%',
+                      // FIX: Removed maxWidth: '100%' so math stays accurate
                     }}
                   >
                     {Array(GRID_SIZE).fill(null).map((_, rowIndex) => (
@@ -185,9 +189,22 @@ const AntibioticGame = () => {
                       })
                     ))}
 
+                    {/* If you want to use EntityLayer component, place it here:
+                       <EntityLayer 
+                         antibioticPosition={antibiotic}
+                         antibioticDirection={direction}
+                         bacteriaPositions={[]} // Pass ghosts here
+                         poweredUp={false}
+                         cellSize={CELL_SIZE}
+                       />
+                       
+                       Below is the manual rendering logic you had, which also works now that the CSS is fixed.
+                    */}
                     <div
                       className={`absolute w-7 h-5 rounded-lg bg-gradient-to-r from-blue-400 to-cyan-400 transition-all duration-150 ${getAntibioticRotation()} border-2 border-white shadow-lg`}
                       style={{
+                        // Note: (20 - 28) / 2 = -4. 
+                        // With maxWidth removed, this math is now pixel-perfect.
                         left: `${antibiotic.x * CELL_SIZE + (CELL_SIZE - 28) / 2}px`,
                         top: `${antibiotic.y * CELL_SIZE + (CELL_SIZE - 20) / 2}px`,
                       }}

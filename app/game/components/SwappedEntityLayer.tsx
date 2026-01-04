@@ -39,8 +39,8 @@ const SwappedEntityLayer = memo(({
     return colors[index % colors.length];
   };
 
-  // GameBoard has p-2 (8px) padding, so we need to offset entities by 8px
-  const gridOffset = 8;
+  // FIX: Set offset to 0 because this component is mounted INSIDE the grid container
+  const gridOffset = 0;
 
   // Calculate centered positions
   const bacteriaSize = cellSize * 0.8;
