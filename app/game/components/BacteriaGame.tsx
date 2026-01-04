@@ -61,6 +61,29 @@ const BacteriaGame = () => {
 
   const boardPixelWidth = GRID_WIDTH * CELL_SIZE;
   const boardPixelHeight = GRID_HEIGHT * CELL_SIZE;
+  
+  // Calculate responsive cell size for mobile
+  const [responsiveCellSize, setResponsiveCellSize] = useState(CELL_SIZE);
+  const boardRef = useRef<HTMLDivElement>(null);
+  
+  // Update responsive cell size on window resize
+  useEffect(() => {
+    const updateCellSize = () => {
+      if (boardRef.current) {
+        const containerWidth = boardRef.current.parentElement?.clientWidth || window.innerWidth;
+        const maxBoardWidth = Math.min(containerWidth - 32, 360); // 360px is the original size, 32px for padding
+        const newCellSize = Math.floor(maxBoardWidth / GRID_WIDTH);
+        setResponsiveCellSize(Math.max(20, newCellSize)); // Minimum 20px cell size
+      }
+    };
+    
+    updateCellSize();
+    window.addEventListener('resize', updateCellSize);
+    return () => window.removeEventListener('resize', updateCellSize);
+  }, []);
+  
+  const responsiveBoardWidth = GRID_WIDTH * responsiveCellSize;
+  const responsiveBoardHeight = GRID_HEIGHT * responsiveCellSize;
 
   // --- NEW: Quadrant-Based Spawning Logic ---
   const generateScatteredPositions = (): Position[] => {
@@ -346,10 +369,10 @@ const BacteriaGame = () => {
     return colors[index % colors.length];
   };
 
-  const bacteriaSize = CELL_SIZE * 0.8;
-  const antibioticSize = CELL_SIZE * 0.7;
-  const bacteriaOffset = (CELL_SIZE - bacteriaSize) / 2;
-  const antibioticOffset = (CELL_SIZE - antibioticSize) / 2;
+  const bacteriaSize = responsiveCellSize * 0.8;
+  const antibioticSize = responsiveCellSize * 0.7;
+  const bacteriaOffset = (responsiveCellSize - bacteriaSize) / 2;
+  const antibioticOffset = (responsiveCellSize - antibioticSize) / 2;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-gray-950 text-white p-3 md:p-6 touch-none">
@@ -365,8 +388,8 @@ const BacteriaGame = () => {
 
         <div className="flex flex-col lg:flex-row gap-6 md:gap-8 items-start">
           <div className="flex-1 w-full flex flex-col items-center">
-            <div className="flex justify-center items-center w-full overflow-hidden py-4">
-              <div className="relative" style={{ width: boardPixelWidth, height: boardPixelHeight }}>
+            <div className="flex justify-center items-center w-full overflow-hidden py-4" ref={boardRef}>
+              <div className="relative" style={{ width: responsiveBoardWidth, height: responsiveBoardHeight }}>
                 
                 {/* Board Container */}
                 <div 
@@ -382,8 +405,8 @@ const BacteriaGame = () => {
                     className="bg-black/80 backdrop-blur-sm relative z-0"
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: `repeat(${GRID_WIDTH}, ${CELL_SIZE}px)`,
-                      gridTemplateRows: `repeat(${GRID_HEIGHT}, ${CELL_SIZE}px)`,
+                      gridTemplateColumns: `repeat(${GRID_WIDTH}, ${responsiveCellSize}px)`,
+                      gridTemplateRows: `repeat(${GRID_HEIGHT}, ${responsiveCellSize}px)`,
                     }}
                   >
                     {level.map((row, y) =>
@@ -398,7 +421,7 @@ const BacteriaGame = () => {
                             cellContent = <div className="w-3 h-3 rounded-full bg-blue-400 animate-pulse shadow-[0_0_12px_rgba(96,165,250,0.8)]" />;
                           }
                         }
-                        return <div key={`${x}-${y}`} className={cellClass} style={{ width: CELL_SIZE, height: CELL_SIZE }}>{cellContent}</div>;
+                        return <div key={`${x}-${y}`} className={cellClass} style={{ width: responsiveCellSize, height: responsiveCellSize }}>{cellContent}</div>;
                       })
                     )}
                   </div>
@@ -415,7 +438,7 @@ const BacteriaGame = () => {
                       }`}
                       style={{
                         width: `${bacteriaSize}px`, height: `${bacteriaSize}px`,
-                        transform: `translate(${bacteriaPosition.x * CELL_SIZE + bacteriaOffset}px, ${bacteriaPosition.y * CELL_SIZE + bacteriaOffset}px)`,
+                        transform: `translate(${bacteriaPosition.x * responsiveCellSize + bacteriaOffset}px, ${bacteriaPosition.y * responsiveCellSize + bacteriaOffset}px)`,
                       }}
                     >
                       <div className="absolute w-2 h-2 bg-white/90 rounded-full left-2 top-2"></div>
@@ -431,7 +454,7 @@ const BacteriaGame = () => {
                         }`}
                         style={{
                           width: `${antibioticSize}px`, height: `${antibioticSize}px`,
-                          transform: `translate(${pos.x * CELL_SIZE + antibioticOffset}px, ${pos.y * CELL_SIZE + antibioticOffset}px)`,
+                          transform: `translate(${pos.x * responsiveCellSize + antibioticOffset}px, ${pos.y * responsiveCellSize + antibioticOffset}px)`,
                           zIndex: 20
                         }}
                       >
