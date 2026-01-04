@@ -42,6 +42,13 @@ const EntityLayer = memo(({
   // GameBoard has p-2 (8px) padding, so we need to offset entities by 8px
   const gridOffset = 8;
 
+  // Calculate centered positions
+  const antibioticSize = cellSize * 0.7;
+  const bacteriaSize = cellSize * 0.8;
+  
+  const antibioticLeft = antibioticPosition.x * cellSize + (cellSize - antibioticSize) / 2 + gridOffset;
+  const antibioticTop = antibioticPosition.y * cellSize + (cellSize - antibioticSize) / 2 + gridOffset;
+
   return (
     <div className="absolute inset-0 pointer-events-none">
       {/* Antibiotic (Pac-Man) */}
@@ -52,10 +59,10 @@ const EntityLayer = memo(({
             : 'bg-gradient-to-r from-blue-400 to-cyan-500 border-2 border-white shadow-lg'
         }`}
         style={{
-          width: `${cellSize * 0.7}px`,
-          height: `${cellSize * 0.7}px`,
-          left: `${antibioticPosition.x * cellSize + cellSize * 0.15 + gridOffset}px`,
-          top: `${antibioticPosition.y * cellSize + cellSize * 0.15 + gridOffset}px`,
+          width: `${antibioticSize}px`,
+          height: `${antibioticSize}px`,
+          left: `${antibioticLeft}px`,
+          top: `${antibioticTop}px`,
         }}
       >
         {/* Pill shape details */}
@@ -69,35 +76,40 @@ const EntityLayer = memo(({
       </div>
 
       {/* Bacteria (Ghosts) */}
-      {bacteriaPositions.map((pos, index) => (
-        <div
-          key={index}
-          className={`absolute rounded-lg animate-bounce ${
-            poweredUp 
-              ? 'opacity-50 grayscale' 
-              : `bg-gradient-to-br ${getBacteriaColor(index)}`
-          }`}
-          style={{
-            width: `${cellSize * 0.8}px`,
-            height: `${cellSize * 0.8}px`,
-            left: `${pos.x * cellSize + cellSize * 0.1 + gridOffset}px`,
-            top: `${pos.y * cellSize + cellSize * 0.1 + gridOffset}px`,
-            animationDelay: `${index * 0.2}s`,
-          }}
-        >
-          {/* Bacteria details */}
-          <div className="absolute w-2 h-2 bg-white/90 rounded-full left-2 top-2"></div>
-          <div className="absolute w-2 h-2 bg-white/90 rounded-full right-2 top-2"></div>
-          <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-4 h-2 bg-white/70 rounded-t-full"></div>
-          
-          {/* Scared effect when powered up */}
-          {poweredUp && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-xs font-bold text-blue-300">!</div>
-            </div>
-          )}
-        </div>
-      ))}
+      {bacteriaPositions.map((pos, index) => {
+        const bacteriaLeft = pos.x * cellSize + (cellSize - bacteriaSize) / 2 + gridOffset;
+        const bacteriaTop = pos.y * cellSize + (cellSize - bacteriaSize) / 2 + gridOffset;
+        
+        return (
+          <div
+            key={index}
+            className={`absolute rounded-lg animate-bounce ${
+              poweredUp 
+                ? 'opacity-50 grayscale' 
+                : `bg-gradient-to-br ${getBacteriaColor(index)}`
+            }`}
+            style={{
+              width: `${bacteriaSize}px`,
+              height: `${bacteriaSize}px`,
+              left: `${bacteriaLeft}px`,
+              top: `${bacteriaTop}px`,
+              animationDelay: `${index * 0.2}s`,
+            }}
+          >
+            {/* Bacteria details */}
+            <div className="absolute w-2 h-2 bg-white/90 rounded-full left-2 top-2"></div>
+            <div className="absolute w-2 h-2 bg-white/90 rounded-full right-2 top-2"></div>
+            <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-4 h-2 bg-white/70 rounded-t-full"></div>
+            
+            {/* Scared effect when powered up */}
+            {poweredUp && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-xs font-bold text-blue-300">!</div>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 });

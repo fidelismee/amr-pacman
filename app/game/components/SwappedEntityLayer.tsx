@@ -42,6 +42,13 @@ const SwappedEntityLayer = memo(({
   // GameBoard has p-2 (8px) padding, so we need to offset entities by 8px
   const gridOffset = 8;
 
+  // Calculate centered positions
+  const bacteriaSize = cellSize * 0.8;
+  const antibioticSize = cellSize * 0.7;
+  
+  const bacteriaLeft = bacteriaPosition.x * cellSize + (cellSize - bacteriaSize) / 2 + gridOffset;
+  const bacteriaTop = bacteriaPosition.y * cellSize + (cellSize - bacteriaSize) / 2 + gridOffset;
+
   return (
     <div className="absolute inset-0 pointer-events-none">
       {/* Bacteria (Player - now looks like blob) */}
@@ -52,10 +59,10 @@ const SwappedEntityLayer = memo(({
             : 'bg-gradient-to-br from-green-500 to-emerald-700 border-2 border-white shadow-lg'
         }`}
         style={{
-          width: `${cellSize * 0.8}px`,
-          height: `${cellSize * 0.8}px`,
-          left: `${bacteriaPosition.x * cellSize + cellSize * 0.1 + gridOffset}px`,
-          top: `${bacteriaPosition.y * cellSize + cellSize * 0.1 + gridOffset}px`,
+          width: `${bacteriaSize}px`,
+          height: `${bacteriaSize}px`,
+          left: `${bacteriaLeft}px`,
+          top: `${bacteriaTop}px`,
         }}
       >
         {/* Bacteria details */}
@@ -78,34 +85,39 @@ const SwappedEntityLayer = memo(({
       </div>
 
       {/* Antibiotics (Enemies - now look like pills) */}
-      {antibioticPositions.map((pos, index) => (
-        <div
-          key={index}
-          className={`absolute rounded-full animate-bounce ${
-            poweredUp 
-              ? 'opacity-50 grayscale' 
-              : `bg-gradient-to-r ${getAntibioticColor(index)}`
-          }`}
-          style={{
-            width: `${cellSize * 0.7}px`,
-            height: `${cellSize * 0.7}px`,
-            left: `${pos.x * cellSize + cellSize * 0.15 + gridOffset}px`,
-            top: `${pos.y * cellSize + cellSize * 0.15 + gridOffset}px`,
-            animationDelay: `${index * 0.2}s`,
-          }}
-        >
-          {/* Pill shape details */}
-          <div className="absolute w-1 h-3 bg-white/80 rounded-full left-2 top-1/2 transform -translate-y-1/2"></div>
-          <div className="absolute w-1 h-3 bg-white/80 rounded-full right-2 top-1/2 transform -translate-y-1/2"></div>
-          
-          {/* Scared effect when bacteria is powered up */}
-          {poweredUp && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-xs font-bold text-green-300">!</div>
-            </div>
-          )}
-        </div>
-      ))}
+      {antibioticPositions.map((pos, index) => {
+        const antibioticLeft = pos.x * cellSize + (cellSize - antibioticSize) / 2 + gridOffset;
+        const antibioticTop = pos.y * cellSize + (cellSize - antibioticSize) / 2 + gridOffset;
+        
+        return (
+          <div
+            key={index}
+            className={`absolute rounded-full animate-bounce ${
+              poweredUp 
+                ? 'opacity-50 grayscale' 
+                : `bg-gradient-to-r ${getAntibioticColor(index)}`
+            }`}
+            style={{
+              width: `${antibioticSize}px`,
+              height: `${antibioticSize}px`,
+              left: `${antibioticLeft}px`,
+              top: `${antibioticTop}px`,
+              animationDelay: `${index * 0.2}s`,
+            }}
+          >
+            {/* Pill shape details */}
+            <div className="absolute w-1 h-3 bg-white/80 rounded-full left-2 top-1/2 transform -translate-y-1/2"></div>
+            <div className="absolute w-1 h-3 bg-white/80 rounded-full right-2 top-1/2 transform -translate-y-1/2"></div>
+            
+            {/* Scared effect when bacteria is powered up */}
+            {poweredUp && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-xs font-bold text-green-300">!</div>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 });

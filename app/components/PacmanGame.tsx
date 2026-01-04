@@ -188,8 +188,8 @@ const AntibioticGame = () => {
                     <div
                       className={`absolute w-7 h-5 rounded-lg bg-gradient-to-r from-blue-400 to-cyan-400 transition-all duration-150 ${getAntibioticRotation()} border-2 border-white shadow-lg`}
                       style={{
-                        left: `${antibiotic.x * CELL_SIZE + CELL_SIZE/2 - 14}px`,
-                        top: `${antibiotic.y * CELL_SIZE + CELL_SIZE/2 - 10}px`,
+                        left: `${antibiotic.x * CELL_SIZE + (CELL_SIZE - 28) / 2}px`,
+                        top: `${antibiotic.y * CELL_SIZE + (CELL_SIZE - 20) / 2}px`,
                       }}
                     >
                       <div className="absolute w-1 h-3 bg-white rounded-full left-1 top-1"></div>
