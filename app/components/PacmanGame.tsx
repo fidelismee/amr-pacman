@@ -226,22 +226,33 @@ const AntibioticGame = () => {
 
               <div className="mt-8 space-y-4">
                 <h3 className="text-lg font-bold text-blue-600">Controls</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="text-center p-2 bg-blue-100 rounded">
-                    <div className="text-blue-700 text-xl">↑</div>
-                    <div className="text-sm text-gray-600">Up</div>
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  <div className="col-start-2">
+                    <div className="aspect-square flex items-center justify-center bg-blue-100 rounded-lg">
+                      <div className="text-xl">↑</div>
+                    </div>
+                    <div className="text-center text-sm text-gray-600 mt-1">Up</div>
                   </div>
-                  <div className="text-center p-2 bg-blue-100 rounded">
-                    <div className="text-blue-700 text-xl">↓</div>
-                    <div className="text-sm text-gray-600">Down</div>
+                  
+                  <div>
+                    <div className="aspect-square flex items-center justify-center bg-blue-100 rounded-lg">
+                      <div className="text-xl">←</div>
+                    </div>
+                    <div className="text-center text-sm text-gray-600 mt-1">Left</div>
                   </div>
-                  <div className="text-center p-2 bg-blue-100 rounded">
-                    <div className="text-blue-700 text-xl">←</div>
-                    <div className="text-sm text-gray-600">Left</div>
+                  
+                  <div className="col-start-2 row-start-3">
+                    <div className="aspect-square flex items-center justify-center bg-blue-100 rounded-lg">
+                      <div className="text-xl">↓</div>
+                    </div>
+                    <div className="text-center text-sm text-gray-600 mt-1">Down</div>
                   </div>
-                  <div className="text-center p-2 bg-blue-100 rounded">
-                    <div className="text-blue-700 text-xl">→</div>
-                    <div className="text-sm text-gray-600">Right</div>
+                  
+                  <div className="row-start-2">
+                    <div className="aspect-square flex items-center justify-center bg-blue-100 rounded-lg">
+                      <div className="text-xl">→</div>
+                    </div>
+                    <div className="text-center text-sm text-gray-600 mt-1">Right</div>
                   </div>
                 </div>
                 

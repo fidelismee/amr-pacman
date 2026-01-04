@@ -373,14 +373,14 @@ const AntibioticGame = () => {
                   <div className="text-center text-sm text-gray-400 mt-1">Left</div>
                 </div>
                 
-                <div>
+                <div className="col-start-2 row-start-3">
                   <div className="aspect-square flex items-center justify-center bg-gray-800/50 rounded-lg border border-gray-600">
                     <div className="text-2xl">↓</div>
                   </div>
                   <div className="text-center text-sm text-gray-400 mt-1">Down</div>
                 </div>
                 
-                <div>
+                <div className="row-start-2">
                   <div className="aspect-square flex items-center justify-center bg-gray-800/50 rounded-lg border border-gray-600">
                     <div className="text-2xl">→</div>
                   </div>
