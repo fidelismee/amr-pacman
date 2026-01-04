@@ -1,5 +1,5 @@
-// BacteriaGame.tsx - Complete Fixed Version
 
+// app/game/components/BacteriaGame.tsx
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -37,20 +37,18 @@ const LEVEL_1: Level = [
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 ];
 
-const ANTIBIOTIC_START = { x: 7, y: 7 };
-const BACTERIA_STARTS = [
-  { x: 1, y: 1 },
-  { x: 13, y: 1 },
-  { x: 1, y: 13 },
-  { x: 13, y: 13 }
-];
+// Player starts in the middle
+const BACTERIA_START_POS = { x: 7, y: 7 };
 
-const INITIAL_ENEMY_DIRECTIONS: Direction[] = ['right', 'left', 'right', 'left'];
+const INITIAL_ENEMY_DIRECTIONS: Direction[] = ['right', 'left', 'up', 'down'];
 
 const BacteriaGame = () => {
   const [level, setLevel] = useState<Level>(LEVEL_1);
-  const [bacteriaPosition, setBacteriaPosition] = useState<Position>(ANTIBIOTIC_START);
-  const [antibioticPositions, setAntibioticPositions] = useState<Position[]>(BACTERIA_STARTS);
+  const [bacteriaPosition, setBacteriaPosition] = useState<Position>(BACTERIA_START_POS);
+  
+  // NOTE: Initial state will be populated by the useEffect or initializeGame
+  const [antibioticPositions, setAntibioticPositions] = useState<Position[]>([]);
+  
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [gameActive, setGameActive] = useState(true);
@@ -66,6 +64,39 @@ const BacteriaGame = () => {
 
   const boardPixelWidth = GRID_WIDTH * CELL_SIZE;
   const boardPixelHeight = GRID_HEIGHT * CELL_SIZE;
+
+  // --- Helper: Random Positioning ---
+  const generateRandomPositions = (count: number, playerPos: Position): Position[] => {
+    const validPositions: Position[] = [];
+    
+    // 1. Find all valid empty squares (not walls)
+    LEVEL_1.forEach((row, y) => {
+      row.forEach((cell, x) => {
+        if (cell !== 1) { // 1 is wall
+          // 2. Enforce Safe Zone: Don't spawn too close to player
+          // Using Manhattan distance (absolute diff in x + absolute diff in y)
+          const distanceToPlayer = Math.abs(x - playerPos.x) + Math.abs(y - playerPos.y);
+          
+          // Must be at least 5 blocks away from player to prevent instant death
+          if (distanceToPlayer > 5) {
+            validPositions.push({ x, y });
+          }
+        }
+      });
+    });
+
+    // 3. Shuffle and pick
+    const selectedPositions: Position[] = [];
+    for (let i = 0; i < count; i++) {
+      if (validPositions.length === 0) break;
+      const randomIndex = Math.floor(Math.random() * validPositions.length);
+      selectedPositions.push(validPositions[randomIndex]);
+      // Remove used position so enemies don't stack on top of each other
+      validPositions.splice(randomIndex, 1);
+    }
+    
+    return selectedPositions;
+  };
 
   const canMoveTo = (x: number, y: number): boolean => {
     if (x < 0 || x >= level[0].length || y < 0 || y >= level.length) return false;
@@ -166,8 +197,10 @@ const BacteriaGame = () => {
               return true;
             }
           }
-          for (let i = newPositions.length; i < prev.length; i++) {
-            if (i !== checkIndex && prev[i].x === pos.x && prev[i].y === pos.y) {
+          // Also check against previous positions of antibiotics that haven't moved yet
+          // to prevent them from walking into each other
+          for (let i = checkIndex + 1; i < prev.length; i++) {
+            if (prev[i].x === pos.x && prev[i].y === pos.y) {
               return true;
             }
           }
@@ -200,6 +233,7 @@ const BacteriaGame = () => {
               return canMoveTo(turnPos.x, turnPos.y) && !isPositionOccupied(turnPos, index);
             });
             
+            // Random chance to turn if a path is open
             if (availableTurns.length > 0 && Math.random() < 0.3) {
               const chosenTurn = availableTurns[Math.floor(Math.random() * availableTurns.length)];
               antibioticDirectionsRef.current[index] = chosenTurn.dir;
@@ -267,8 +301,10 @@ const BacteriaGame = () => {
             }
             return newLives;
           });
-          setBacteriaPosition(ANTIBIOTIC_START);
-          setAntibioticPositions(BACTERIA_STARTS.map(pos => ({ ...pos })));
+          
+          // Reset positions on death, but randomize enemies again to prevent camping!
+          setBacteriaPosition(BACTERIA_START_POS);
+          setAntibioticPositions(generateRandomPositions(4, BACTERIA_START_POS));
           antibioticDirectionsRef.current = [...INITIAL_ENEMY_DIRECTIONS];
         }
       }
@@ -277,8 +313,9 @@ const BacteriaGame = () => {
 
   const initializeGame = useCallback(() => {
     setLevel(LEVEL_1.map(row => [...row]));
-    setBacteriaPosition(ANTIBIOTIC_START);
-    setAntibioticPositions(BACTERIA_STARTS.map(pos => ({ ...pos })));
+    setBacteriaPosition(BACTERIA_START_POS);
+    // Generate 4 random enemies, ensuring they aren't too close to start
+    setAntibioticPositions(generateRandomPositions(4, BACTERIA_START_POS));
     antibioticDirectionsRef.current = [...INITIAL_ENEMY_DIRECTIONS];
     setScore(0);
     setLives(3);
@@ -287,6 +324,11 @@ const BacteriaGame = () => {
     setPowerUpTimer(0);
     setGameMessage('');
   }, []);
+
+  // Run initialization once on mount
+  useEffect(() => {
+    initializeGame();
+  }, [initializeGame]);
 
   // Keyboard controls
   useEffect(() => {
@@ -298,21 +340,11 @@ const BacteriaGame = () => {
       if (!isRunning && e.key !== ' ') return;
       
       switch (e.key) {
-        case 'ArrowUp':
-          nextDirectionRef.current = 'up';
-          break;
-        case 'ArrowDown':
-          nextDirectionRef.current = 'down';
-          break;
-        case 'ArrowLeft':
-          nextDirectionRef.current = 'left';
-          break;
-        case 'ArrowRight':
-          nextDirectionRef.current = 'right';
-          break;
-        case ' ':
-          setIsRunning(prev => !prev);
-          break;
+        case 'ArrowUp': nextDirectionRef.current = 'up'; break;
+        case 'ArrowDown': nextDirectionRef.current = 'down'; break;
+        case 'ArrowLeft': nextDirectionRef.current = 'left'; break;
+        case 'ArrowRight': nextDirectionRef.current = 'right'; break;
+        case ' ': setIsRunning(prev => !prev); break;
         case 'r':
         case 'R':
           initializeGame();
