@@ -1,5 +1,13 @@
 // next.config.ts
+import type { NextConfig } from "next";
 import withPWA from "next-pwa";
+
+// Declare process to avoid TypeScript errors
+declare const process: {
+  env: {
+    NODE_ENV: 'development' | 'production' | 'test';
+  };
+};
 
 const nextConfig: NextConfig = {
   /* config options here */
