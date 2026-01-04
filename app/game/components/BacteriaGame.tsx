@@ -40,7 +40,7 @@ const BacteriaGame = () => {
   const boardPixelHeight = GRID_HEIGHT * CELL_SIZE;
 
   // Game loop hook
-  const { getCurrentDirection, setDirection } = useGameLoop({
+  const { getCurrentDirection, getNextDirection, setDirection, updateCurrentDirection } = useGameLoop({
     tickInterval: 200,
     onTick: () => {
       if (!gameActive) return;
@@ -76,15 +76,58 @@ const BacteriaGame = () => {
     setGameMessage('');
   }, []);
 
-  // --- Movement Logic (Same as before, abbreviated for clarity) ---
+  // --- Movement Logic with direction queuing ---
   const moveBacteria = () => {
-    const direction = getCurrentDirection();
+    const currentDirection = getCurrentDirection();
+    const nextDirection = getNextDirection();
     const newPos = { ...bacteriaPosition };
-    switch (direction) {
-      case 'up': if (canMoveTo(newPos.x, newPos.y - 1)) newPos.y--; break;
-      case 'down': if (canMoveTo(newPos.x, newPos.y + 1)) newPos.y++; break;
-      case 'left': if (canMoveTo(newPos.x - 1, newPos.y)) newPos.x--; break;
-      case 'right': if (canMoveTo(newPos.x + 1, newPos.y)) newPos.x++; break;
+    let moved = false;
+    
+    // First try to move in the next direction if available
+    if (nextDirection !== null) {
+      const testPos = { ...bacteriaPosition };
+      switch (nextDirection) {
+        case 'up':
+          if (canMoveTo(testPos.x, testPos.y - 1)) {
+            testPos.y--;
+            moved = true;
+          }
+          break;
+        case 'down':
+          if (canMoveTo(testPos.x, testPos.y + 1)) {
+            testPos.y++;
+            moved = true;
+          }
+          break;
+        case 'left':
+          if (canMoveTo(testPos.x - 1, testPos.y)) {
+            testPos.x--;
+            moved = true;
+          }
+          break;
+        case 'right':
+          if (canMoveTo(testPos.x + 1, testPos.y)) {
+            testPos.x++;
+            moved = true;
+          }
+          break;
+      }
+      
+      if (moved) {
+        Object.assign(newPos, testPos);
+        // Update current direction in the hook
+        updateCurrentDirection(nextDirection);
+      }
+    }
+    
+    // If next direction wasn't possible or available, try current direction
+    if (!moved) {
+      switch (currentDirection) {
+        case 'up': if (canMoveTo(newPos.x, newPos.y - 1)) newPos.y--; break;
+        case 'down': if (canMoveTo(newPos.x, newPos.y + 1)) newPos.y++; break;
+        case 'left': if (canMoveTo(newPos.x - 1, newPos.y)) newPos.x--; break;
+        case 'right': if (canMoveTo(newPos.x + 1, newPos.y)) newPos.x++; break;
+      }
     }
 
     if (newPos.x !== bacteriaPosition.x || newPos.y !== bacteriaPosition.y) {

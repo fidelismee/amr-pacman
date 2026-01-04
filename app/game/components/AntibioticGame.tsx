@@ -29,7 +29,7 @@ const AntibioticGame = () => {
   const [gameMessage, setGameMessage] = useState<string>('');
 
   // Game loop hook
-  const { getCurrentDirection, isRunning, setDirection } = useGameLoop({
+  const { getCurrentDirection, getNextDirection, isRunning, setDirection, updateCurrentDirection } = useGameLoop({
     tickInterval: 200,
     onTick: () => {
       if (!gameActive) return;
@@ -82,22 +82,69 @@ const AntibioticGame = () => {
 
   // Move antibiotic based on current direction
   const moveAntibiotic = () => {
-    const direction = getCurrentDirection();
+    const currentDirection = getCurrentDirection();
+    const nextDirection = getNextDirection();
     const newPos = { ...antibioticPosition };
+    let directionToUse = currentDirection;
+    let moved = false;
     
-    switch (direction) {
-      case 'up':
-        if (canMoveTo(newPos.x, newPos.y - 1)) newPos.y--;
-        break;
-      case 'down':
-        if (canMoveTo(newPos.x, newPos.y + 1)) newPos.y++;
-        break;
-      case 'left':
-        if (canMoveTo(newPos.x - 1, newPos.y)) newPos.x--;
-        break;
-      case 'right':
-        if (canMoveTo(newPos.x + 1, newPos.y)) newPos.x++;
-        break;
+    // First try to move in the next direction if available
+    if (nextDirection !== null) {
+      const testPos = { ...antibioticPosition };
+      switch (nextDirection) {
+        case 'up':
+          if (canMoveTo(testPos.x, testPos.y - 1)) {
+            testPos.y--;
+            directionToUse = nextDirection;
+            moved = true;
+          }
+          break;
+        case 'down':
+          if (canMoveTo(testPos.x, testPos.y + 1)) {
+            testPos.y++;
+            directionToUse = nextDirection;
+            moved = true;
+          }
+          break;
+        case 'left':
+          if (canMoveTo(testPos.x - 1, testPos.y)) {
+            testPos.x--;
+            directionToUse = nextDirection;
+            moved = true;
+          }
+          break;
+        case 'right':
+          if (canMoveTo(testPos.x + 1, testPos.y)) {
+            testPos.x++;
+            directionToUse = nextDirection;
+            moved = true;
+          }
+          break;
+      }
+      
+      if (moved) {
+        Object.assign(newPos, testPos);
+        // Update current direction in the hook
+        updateCurrentDirection(nextDirection);
+      }
+    }
+    
+    // If next direction wasn't possible or available, try current direction
+    if (!moved) {
+      switch (currentDirection) {
+        case 'up':
+          if (canMoveTo(newPos.x, newPos.y - 1)) newPos.y--;
+          break;
+        case 'down':
+          if (canMoveTo(newPos.x, newPos.y + 1)) newPos.y++;
+          break;
+        case 'left':
+          if (canMoveTo(newPos.x - 1, newPos.y)) newPos.x--;
+          break;
+        case 'right':
+          if (canMoveTo(newPos.x + 1, newPos.y)) newPos.x++;
+          break;
+      }
     }
 
     // Check if position changed

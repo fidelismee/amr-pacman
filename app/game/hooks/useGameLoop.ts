@@ -62,12 +62,6 @@ export const useGameLoop = ({ tickInterval = 200, onTick }: UseGameLoopProps = {
     if (!isRunning) return;
 
     const interval = setInterval(() => {
-      // Update direction from next direction if available
-      if (nextDirectionRef.current !== null) {
-        currentDirectionRef.current = nextDirectionRef.current;
-        nextDirectionRef.current = null;
-      }
-
       // Call the tick callback
       if (onTick) {
         onTick();
@@ -84,6 +78,11 @@ export const useGameLoop = ({ tickInterval = 200, onTick }: UseGameLoopProps = {
     nextDirectionRef.current = dir;
   }, []);
 
+  const updateCurrentDirection = useCallback((dir: Direction) => {
+    currentDirectionRef.current = dir;
+    nextDirectionRef.current = null;
+  }, []);
+
   const pause = useCallback(() => setIsRunning(false), []);
   const resume = useCallback(() => setIsRunning(true), []);
   const togglePause = useCallback(() => setIsRunning(prev => !prev), []);
@@ -93,6 +92,7 @@ export const useGameLoop = ({ tickInterval = 200, onTick }: UseGameLoopProps = {
     getCurrentDirection,
     getNextDirection,
     setDirection,
+    updateCurrentDirection,
     pause,
     resume,
     togglePause,
