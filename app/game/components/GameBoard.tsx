@@ -12,26 +12,29 @@ interface GameBoardProps {
 
 const GameBoard = memo(({ level, cellSize = 32 }: GameBoardProps) => {
   return (
-    <div className="relative bg-gradient-to-br from-gray-900 to-black p-2 rounded-lg border-2 border-purple-800/50 shadow-2xl">
-      <div
-        className="grid gap-0"
-        style={{
-          gridTemplateColumns: `repeat(${GRID_WIDTH}, minmax(0, 1fr))`,
-          width: `${GRID_WIDTH * cellSize}px`,
-          height: `${GRID_HEIGHT * cellSize}px`,
-        }}
-      >
-        {level.map((row, rowIndex) =>
-          row.map((cellType, colIndex) => (
-            <Cell
-              key={`${rowIndex}-${colIndex}`}
-              type={cellType}
-              row={rowIndex}
-              col={colIndex}
-              cellSize={cellSize}
-            />
-          ))
-        )}
+    <div className="relative bg-gradient-to-br from-gray-900 to-black p-2 rounded-lg border-2 border-purple-800/50 shadow-2xl overflow-hidden">
+      <div className="flex justify-center">
+        <div
+          className="grid gap-0"
+          style={{
+            gridTemplateColumns: `repeat(${GRID_WIDTH}, minmax(0, 1fr))`,
+            width: `${GRID_WIDTH * cellSize}px`,
+            height: `${GRID_HEIGHT * cellSize}px`,
+            maxWidth: '100%',
+          }}
+        >
+          {level.map((row, rowIndex) =>
+            row.map((cellType, colIndex) => (
+              <Cell
+                key={`${rowIndex}-${colIndex}`}
+                type={cellType}
+                row={rowIndex}
+                col={colIndex}
+                cellSize={cellSize}
+              />
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

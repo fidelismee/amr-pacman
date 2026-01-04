@@ -13,7 +13,7 @@ import {
   CellType 
 } from '../levels';
 
-const CELL_SIZE = 32;
+const CELL_SIZE = 24;
 const POWER_UP_DURATION = 5000; // 5 seconds in milliseconds
 
 const AntibioticGame = () => {

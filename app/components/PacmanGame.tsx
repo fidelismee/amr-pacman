@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 
 const GRID_SIZE = 19;
-const CELL_SIZE = 28;
+const CELL_SIZE = 20;
 
 type Direction = 'up' | 'down' | 'left' | 'right';
 
@@ -155,43 +155,46 @@ const AntibioticGame = () => {
           <div className="flex-1">
             <div className="bg-white p-4 rounded-2xl shadow-2xl border-2 border-blue-200">
               <div className="relative bg-gradient-to-br from-blue-100 to-cyan-100 rounded-lg p-2">
-                <div 
-                  className="relative grid gap-0 border-2 border-blue-300 rounded-lg"
-                  style={{
-                    gridTemplateColumns: `repeat(${GRID_SIZE}, ${CELL_SIZE}px)`,
-                    width: `${GRID_SIZE * CELL_SIZE}px`,
-                    height: `${GRID_SIZE * CELL_SIZE}px`,
-                  }}
-                >
-                  {Array(GRID_SIZE).fill(null).map((_, rowIndex) => (
-                    Array(GRID_SIZE).fill(null).map((_, colIndex) => {
-                      const isWallCell = isWall(colIndex, rowIndex);
-                      const hasDot = dots[rowIndex]?.[colIndex] && !isWallCell;
-                      
-                      return (
-                        <div
-                          key={`${rowIndex}-${colIndex}`}
-                          className={`flex items-center justify-center border border-blue-100 ${
-                            isWallCell ? 'bg-blue-300' : 'bg-gradient-to-br from-blue-50 to-white'
-                          }`}
-                        >
-                          {hasDot && (
-                            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                          )}
-                        </div>
-                      );
-                    })
-                  ))}
-
-                  <div
-                    className={`absolute w-7 h-5 rounded-lg bg-gradient-to-r from-blue-400 to-cyan-400 transition-all duration-150 ${getAntibioticRotation()} border-2 border-white shadow-lg`}
+                <div className="flex justify-center">
+                  <div 
+                    className="relative grid gap-0 border-2 border-blue-300 rounded-lg"
                     style={{
-                      left: `${antibiotic.x * CELL_SIZE + CELL_SIZE/2 - 14}px`,
-                      top: `${antibiotic.y * CELL_SIZE + CELL_SIZE/2 - 10}px`,
+                      gridTemplateColumns: `repeat(${GRID_SIZE}, ${CELL_SIZE}px)`,
+                      width: `${GRID_SIZE * CELL_SIZE}px`,
+                      height: `${GRID_SIZE * CELL_SIZE}px`,
+                      maxWidth: '100%',
                     }}
                   >
-                    <div className="absolute w-1 h-3 bg-white rounded-full left-1 top-1"></div>
-                    <div className="absolute w-1 h-3 bg-white rounded-full right-1 top-1"></div>
+                    {Array(GRID_SIZE).fill(null).map((_, rowIndex) => (
+                      Array(GRID_SIZE).fill(null).map((_, colIndex) => {
+                        const isWallCell = isWall(colIndex, rowIndex);
+                        const hasDot = dots[rowIndex]?.[colIndex] && !isWallCell;
+                        
+                        return (
+                          <div
+                            key={`${rowIndex}-${colIndex}`}
+                            className={`flex items-center justify-center border border-blue-100 ${
+                              isWallCell ? 'bg-blue-300' : 'bg-gradient-to-br from-blue-50 to-white'
+                            }`}
+                          >
+                            {hasDot && (
+                              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                            )}
+                          </div>
+                        );
+                      })
+                    ))}
+
+                    <div
+                      className={`absolute w-7 h-5 rounded-lg bg-gradient-to-r from-blue-400 to-cyan-400 transition-all duration-150 ${getAntibioticRotation()} border-2 border-white shadow-lg`}
+                      style={{
+                        left: `${antibiotic.x * CELL_SIZE + CELL_SIZE/2 - 14}px`,
+                        top: `${antibiotic.y * CELL_SIZE + CELL_SIZE/2 - 10}px`,
+                      }}
+                    >
+                      <div className="absolute w-1 h-3 bg-white rounded-full left-1 top-1"></div>
+                      <div className="absolute w-1 h-3 bg-white rounded-full right-1 top-1"></div>
+                    </div>
                   </div>
                 </div>
               </div>
