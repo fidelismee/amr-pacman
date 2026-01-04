@@ -3,14 +3,14 @@
 "use client";
 
 import { useState, useCallback, useRef } from 'react';
-import { useGameLoop, Position, Direction } from '../hooks/useGameLoop'; // Ensure path is correct
+import { useGameLoop, Position, Direction } from '../hooks/useGameLoop';
 import GameBoard from './GameBoard';
 import SwappedEntityLayer from './SwappedEntityLayer';
 import GameStats from './GameStats';
 import GameControls from './GameControls';
 import GameLegend from './GameLegend';
 import GameBoardContainer from './GameBoardContainer';
-import TouchController from '../../components/TouchController'; // Ensure path is correct
+import TouchController from '../../components/TouchController';
 import { 
   LEVEL_1, 
   ANTIBIOTIC_START, 
@@ -20,8 +20,15 @@ import {
   GRID_HEIGHT
 } from '../levels';
 
-const CELL_SIZE = 24; // Keep this fixed!
+const CELL_SIZE = 24;
 const POWER_UP_DURATION = 5000;
+
+// NEW: Define specific starting directions for each enemy index
+// Index 0 (Top-Left): moves Right
+// Index 1 (Top-Right): moves Left (prevents wall hit)
+// Index 2 (Bottom-Left): moves Right
+// Index 3 (Bottom-Right): moves Left (prevents wall hit)
+const INITIAL_ENEMY_DIRECTIONS: Direction[] = ['right', 'left', 'right', 'left'];
 
 const BacteriaGame = () => {
   // Game state
@@ -36,10 +43,8 @@ const BacteriaGame = () => {
   const [gameMessage, setGameMessage] = useState<string>('');
   const [hasFocus, setHasFocus] = useState(false);
 
-  // Store current direction for each antibiotic (inertia/memory)
-  const antibioticDirectionsRef = useRef<Direction[]>(
-    BACTERIA_STARTS.map(() => 'right') // Default starting direction
-  );
+  // UPDATED: Initialize with the custom direction array
+  const antibioticDirectionsRef = useRef<Direction[]>([...INITIAL_ENEMY_DIRECTIONS]);
 
   // --- Calculate Board Pixel Size for alignment ---
   const boardPixelWidth = GRID_WIDTH * CELL_SIZE;
@@ -74,8 +79,10 @@ const BacteriaGame = () => {
     setLevel(LEVEL_1.map(row => [...row]));
     setBacteriaPosition(ANTIBIOTIC_START);
     setAntibioticPositions(BACTERIA_STARTS.map(pos => ({ ...pos })));
-    // Reset antibiotic directions to default
-    antibioticDirectionsRef.current = BACTERIA_STARTS.map(() => 'right');
+    
+    // UPDATED: Reset using the custom direction array logic
+    antibioticDirectionsRef.current = [...INITIAL_ENEMY_DIRECTIONS];
+    
     setScore(0);
     setLives(3);
     setGameActive(true);
@@ -179,7 +186,6 @@ const BacteriaGame = () => {
         ];
         
         // Helper to check if a position is occupied by another antibiotic
-        // Checks against already-calculated new positions (antibiotics already processed this tick)
         const isPositionOccupied = (pos: Position): boolean => {
           return newPositions.some(other => 
             other.x === pos.x && other.y === pos.y
@@ -305,6 +311,9 @@ const BacteriaGame = () => {
           });
           setBacteriaPosition(ANTIBIOTIC_START);
           setAntibioticPositions(BACTERIA_STARTS.map(pos => ({ ...pos })));
+          
+          // UPDATED: Reset directions on collision death too
+          antibioticDirectionsRef.current = [...INITIAL_ENEMY_DIRECTIONS];
         }
       }
     });
