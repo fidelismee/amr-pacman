@@ -88,6 +88,7 @@ const AntibioticGame = () => {
     let directionToUse = currentDirection;
     let moved = false;
     
+    
     // First try to move in the next direction if available
     if (nextDirection !== null) {
       const testPos = { ...antibioticPosition };

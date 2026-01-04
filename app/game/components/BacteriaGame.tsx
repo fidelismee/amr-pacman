@@ -154,15 +154,35 @@ const BacteriaGame = () => {
   };
 
   const moveAntibiotics = () => {
-    setAntibioticPositions(prev => 
-      prev.map(antibiotic => {
+    setAntibioticPositions(prev => {
+      // Create a set of occupied positions for collision checking
+      const occupied = new Set(prev.map(p => `${p.x},${p.y}`));
+      
+      const newPositions = prev.map(antibiotic => {
         const directions = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }];
-        const validMoves = directions.filter(dir => canMoveTo(antibiotic.x + dir.x, antibiotic.y + dir.y));
-        if (validMoves.length === 0) return antibiotic;
+        
+        // Filter valid moves: not a wall and not occupied by another antibiotic
+        const validMoves = directions.filter(dir => {
+          const newX = antibiotic.x + dir.x;
+          const newY = antibiotic.y + dir.y;
+          return canMoveTo(newX, newY) && !occupied.has(`${newX},${newY}`);
+        });
+        
+        if (validMoves.length === 0) {
+          // If no valid moves that avoid other antibiotics, try moves that might overlap
+          const fallbackMoves = directions.filter(dir => 
+            canMoveTo(antibiotic.x + dir.x, antibiotic.y + dir.y)
+          );
+          if (fallbackMoves.length === 0) return antibiotic;
+          const move = fallbackMoves[Math.floor(Math.random() * fallbackMoves.length)];
+          return { x: antibiotic.x + move.x, y: antibiotic.y + move.y };
+        }
+        
         const move = validMoves[Math.floor(Math.random() * validMoves.length)];
         return { x: antibiotic.x + move.x, y: antibiotic.y + move.y };
-      })
-    );
+      });
+      return newPositions;
+    });
   };
 
   const checkCollisions = () => {
