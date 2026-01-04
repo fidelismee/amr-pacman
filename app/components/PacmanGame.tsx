@@ -201,11 +201,10 @@ const AntibioticGame = () => {
                        Below is the manual rendering logic you had, which also works now that the CSS is fixed.
                     */}
                     <div
-                      className={`absolute w-7 h-5 rounded-lg bg-gradient-to-r from-blue-400 to-cyan-400 transition-all duration-150 ${getAntibioticRotation()} border-2 border-white shadow-lg`}
+                      className={`absolute w-5 h-5 rounded-lg bg-gradient-to-r from-blue-400 to-cyan-400 transition-all duration-150 ${getAntibioticRotation()} border-2 border-white shadow-lg`}
                       style={{
-                        // Note: (20 - 28) / 2 = -4. 
-                        // With maxWidth removed, this math is now pixel-perfect.
-                        left: `${antibiotic.x * CELL_SIZE + (CELL_SIZE - 28) / 2}px`,
+                        // Fixed: Character should be smaller than cell for proper centering
+                        left: `${antibiotic.x * CELL_SIZE + (CELL_SIZE - 20) / 2}px`,
                         top: `${antibiotic.y * CELL_SIZE + (CELL_SIZE - 20) / 2}px`,
                       }}
                     >

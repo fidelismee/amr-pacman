@@ -20,7 +20,7 @@ const GameBoard = memo(({ level, cellSize = 32 }: GameBoardProps) => {
             gridTemplateColumns: `repeat(${GRID_WIDTH}, minmax(0, 1fr))`,
             width: `${GRID_WIDTH * cellSize}px`,
             height: `${GRID_HEIGHT * cellSize}px`,
-            maxWidth: '100%',
+            // Removed maxWidth: '100%' to ensure pixel-perfect alignment with entity positioning
           }}
         >
           {level.map((row, rowIndex) =>

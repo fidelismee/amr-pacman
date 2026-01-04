@@ -39,15 +39,21 @@ const EntityLayer = memo(({
     return colors[index % colors.length];
   };
 
-  // FIX: Set offset to 0 because this component is mounted INSIDE the grid container
-  const gridOffset = 0;
+  // Calculate grid offset to account for GameBoard padding and centering
+  // GameBoard has p-2 (8px) padding and border-2 (2px) on all sides
+  // Grid is centered horizontally with flex justify-center
+  const padding = 8; // p-2 = 0.5rem = 8px
+  const borderWidth = 2; // border-2 = 2px
+  const totalHorizontalExtra = (padding + borderWidth) * 2; // Both sides
+  const gridOffsetX = totalHorizontalExtra / 2; // Grid is centered horizontally
+  const gridOffsetY = padding + borderWidth; // Grid is at top with padding+border
 
   // Calculate centered positions
   const antibioticSize = cellSize * 0.7;
   const bacteriaSize = cellSize * 0.8;
   
-  const antibioticLeft = antibioticPosition.x * cellSize + (cellSize - antibioticSize) / 2 + gridOffset;
-  const antibioticTop = antibioticPosition.y * cellSize + (cellSize - antibioticSize) / 2 + gridOffset;
+  const antibioticLeft = antibioticPosition.x * cellSize + (cellSize - antibioticSize) / 2 + gridOffsetX;
+  const antibioticTop = antibioticPosition.y * cellSize + (cellSize - antibioticSize) / 2 + gridOffsetY;
 
   return (
     <div className="absolute inset-0 pointer-events-none">
@@ -77,8 +83,8 @@ const EntityLayer = memo(({
 
       {/* Bacteria (Ghosts) */}
       {bacteriaPositions.map((pos, index) => {
-        const bacteriaLeft = pos.x * cellSize + (cellSize - bacteriaSize) / 2 + gridOffset;
-        const bacteriaTop = pos.y * cellSize + (cellSize - bacteriaSize) / 2 + gridOffset;
+        const bacteriaLeft = pos.x * cellSize + (cellSize - bacteriaSize) / 2 + gridOffsetX;
+        const bacteriaTop = pos.y * cellSize + (cellSize - bacteriaSize) / 2 + gridOffsetY;
         
         return (
           <div
