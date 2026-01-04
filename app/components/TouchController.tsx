@@ -80,13 +80,8 @@ const TouchController = ({
             </button>
           </div>
           
-          <div className="flex items-center justify-center">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-900 to-black border-2 border-gray-700 flex items-center justify-center">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-700 to-gray-800"></div>
-            </div>
-          </div>
           
-          <div>
+          <div className="col-start-3">
             <button
               onTouchStart={handleTouchStart('right')}
               onMouseDown={handleMouseDown('right')}
