@@ -163,7 +163,10 @@ const BacteriaGame = () => {
 
   const moveAntibiotics = () => {
     setAntibioticPositions(prev => {
-      const newPositions = prev.map((antibiotic, index) => {
+      // We'll build new positions incrementally to check collisions within the same tick
+      const newPositions: Position[] = [];
+      
+      prev.forEach((antibiotic, index) => {
         // Get current direction for this antibiotic
         const currentDir = antibioticDirectionsRef.current[index];
         
@@ -175,53 +178,110 @@ const BacteriaGame = () => {
           { dir: 'right', x: 1, y: 0 },
         ];
         
-        // First, try to continue in current direction if possible
+        // Helper to check if a position is occupied by another antibiotic
+        // Checks against already-calculated new positions (antibiotics already processed this tick)
+        const isPositionOccupied = (pos: Position): boolean => {
+          return newPositions.some(other => 
+            other.x === pos.x && other.y === pos.y
+          );
+        };
+        
+        // Helper to get valid moves (not walls and not occupied by other antibiotics)
+        const getValidMoves = (excludeOpposite: boolean = true) => {
+          const validMoves = directionVectors.filter(v => 
+            canMoveTo(antibiotic.x + v.x, antibiotic.y + v.y)
+          );
+          
+          // Filter out moves that would lead to a cell occupied by another antibiotic
+          const unoccupiedMoves = validMoves.filter(v => {
+            const targetPos = { x: antibiotic.x + v.x, y: antibiotic.y + v.y };
+            return !isPositionOccupied(targetPos);
+          });
+          
+          // If no unoccupied moves, return empty array (antibiotic is blocked)
+          if (unoccupiedMoves.length === 0) {
+            return [];
+          }
+          
+          // Prevent backtracking (180-degree turns) if requested
+          if (excludeOpposite) {
+            let oppositeDir: Direction | null = null;
+            switch (currentDir) {
+              case 'up': oppositeDir = 'down'; break;
+              case 'down': oppositeDir = 'up'; break;
+              case 'left': oppositeDir = 'right'; break;
+              case 'right': oppositeDir = 'left'; break;
+            }
+            
+            const nonBacktrackMoves = unoccupiedMoves.filter(v => v.dir !== oppositeDir);
+            return nonBacktrackMoves.length > 0 ? nonBacktrackMoves : unoccupiedMoves;
+          }
+          
+          return unoccupiedMoves;
+        };
+        
+        // Check if we can continue in current direction
         const currentVector = directionVectors.find(v => v.dir === currentDir);
-        if (currentVector && canMoveTo(antibiotic.x + currentVector.x, antibiotic.y + currentVector.y)) {
-          // Continue in same direction
-          const newPos = { 
+        const canContinueForward = currentVector && 
+          canMoveTo(antibiotic.x + currentVector.x, antibiotic.y + currentVector.y) &&
+          !isPositionOccupied(
+            { x: antibiotic.x + currentVector.x, y: antibiotic.y + currentVector.y }
+          );
+        
+        if (canContinueForward) {
+          // Check if we're at an intersection (perpendicular moves available)
+          const perpendicularVectors = directionVectors.filter(v => 
+            v.dir !== currentDir && 
+            v.dir !== (currentDir === 'up' ? 'down' : 
+                      currentDir === 'down' ? 'up' : 
+                      currentDir === 'left' ? 'right' : 'left')
+          );
+          
+          const perpendicularMoves = perpendicularVectors.filter(v => 
+            canMoveTo(antibiotic.x + v.x, antibiotic.y + v.y) &&
+            !isPositionOccupied({ x: antibiotic.x + v.x, y: antibiotic.y + v.y })
+          );
+          
+          // If at an intersection (perpendicular moves available), 50% chance to turn
+          if (perpendicularMoves.length > 0 && Math.random() < 0.5) {
+            // Choose a random perpendicular move
+            const chosenMove = perpendicularMoves[Math.floor(Math.random() * perpendicularMoves.length)];
+            antibioticDirectionsRef.current[index] = chosenMove.dir;
+            newPositions.push({ 
+              x: antibiotic.x + chosenMove.x, 
+              y: antibiotic.y + chosenMove.y 
+            });
+            return;
+          }
+          
+          // Otherwise continue forward
+          newPositions.push({ 
             x: antibiotic.x + currentVector.x, 
             y: antibiotic.y + currentVector.y 
-          };
-          return newPos;
+          });
+          return;
         }
         
-        // Current direction is blocked, need to choose a new direction
-        // Filter valid moves (not walls)
-        const validMoves = directionVectors.filter(v => 
-          canMoveTo(antibiotic.x + v.x, antibiotic.y + v.y)
-        );
+        // Current direction is blocked (by wall or another antibiotic), need to choose a new direction
+        const validMoves = getValidMoves(true);
         
         if (validMoves.length === 0) {
-          // Dead end, can't move
-          return antibiotic;
+          // Dead end, can't move (blocked by walls and/or other antibiotics)
+          newPositions.push(antibiotic);
+          return;
         }
-        
-        // Prevent backtracking (180-degree turns)
-        // Determine opposite direction
-        let oppositeDir: Direction | null = null;
-        switch (currentDir) {
-          case 'up': oppositeDir = 'down'; break;
-          case 'down': oppositeDir = 'up'; break;
-          case 'left': oppositeDir = 'right'; break;
-          case 'right': oppositeDir = 'left'; break;
-        }
-        
-        // Filter out the opposite direction unless it's the only option
-        const nonBacktrackMoves = validMoves.filter(v => v.dir !== oppositeDir);
-        const movesToChooseFrom = nonBacktrackMoves.length > 0 ? nonBacktrackMoves : validMoves;
         
         // Choose random direction from available options
-        const chosenMove = movesToChooseFrom[Math.floor(Math.random() * movesToChooseFrom.length)];
+        const chosenMove = validMoves[Math.floor(Math.random() * validMoves.length)];
         
         // Update direction for this antibiotic
         antibioticDirectionsRef.current[index] = chosenMove.dir;
         
-        // Return new position
-        return { 
+        // Add new position
+        newPositions.push({ 
           x: antibiotic.x + chosenMove.x, 
           y: antibiotic.y + chosenMove.y 
-        };
+        });
       });
       
       return newPositions;
