@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import PWARegistration from "./components/PWARegistration";
+import { PlatformProvider } from "./contexts/PlatformContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -66,8 +67,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
-        <PWARegistration />
+        <PlatformProvider>
+          {children}
+          <PWARegistration />
+        </PlatformProvider>
       </body>
     </html>
   );
