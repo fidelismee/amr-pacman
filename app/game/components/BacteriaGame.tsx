@@ -401,54 +401,56 @@ const BacteriaGame = () => {
   const antibioticOffset = (responsiveCellSize - antibioticSize) / 2;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-gray-950 text-white p-3 md:p-6 touch-none game-landscape-optimized">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-gray-950 text-white p-2 md:p-4 touch-none game-landscape-optimized">
       <div className="max-w-6xl mx-auto safe-area-padding">
         {/* Portrait mode warning for mobile PWA */}
         {isPortrait && platform.isPWA && (
-          <div className="mb-4 p-4 bg-yellow-900/50 border border-yellow-700 rounded-lg text-center">
-            <div className="text-yellow-300 font-bold mb-2">📱 Rotate Your Device</div>
-            <p className="text-yellow-200 text-sm">
+          <div className="mb-2 p-3 bg-yellow-900/50 border border-yellow-700 rounded-lg text-center">
+            <div className="text-yellow-300 font-bold mb-1 text-sm">📱 Rotate Your Device</div>
+            <p className="text-yellow-200 text-xs">
               For the best experience, please rotate your device to landscape mode.
             </p>
-            <div className="mt-2 text-2xl animate-pulse">↻</div>
+            <div className="mt-1 text-xl animate-pulse">↻</div>
           </div>
         )}
         
-        {/* Platform Indicator - for debugging */}
-        <div className="mb-2 text-xs text-center">
-          <div className="inline-flex items-center gap-2 bg-gray-800/50 px-3 py-1 rounded-full border border-gray-700">
-            <span className="text-gray-400">Platform:</span>
-            <span className={`font-medium ${
-              platform.platformType === 'pwa-mobile' ? 'text-green-400' :
-              platform.platformType === 'browser-mobile' ? 'text-blue-400' :
-              platform.platformType === 'browser-desktop' ? 'text-purple-400' :
-              'text-gray-400'
-            }`}>
-              {platform.platformType}
-              {platform.isPWA && ' (PWA)'}
-              {platform.isMobile && ' (Mobile)'}
-            </span>
+        {/* Platform Indicator - for debugging (hidden on mobile to save space) */}
+        {!platform.isMobile && (
+          <div className="mb-1 md:mb-2 text-xs text-center">
+            <div className="inline-flex items-center gap-2 bg-gray-800/50 px-2 md:px-3 py-0.5 md:py-1 rounded-full border border-gray-700">
+              <span className="text-gray-400">Platform:</span>
+              <span className={`font-medium ${
+                platform.platformType === 'pwa-mobile' ? 'text-green-400' :
+                platform.platformType === 'browser-mobile' ? 'text-blue-400' :
+                platform.platformType === 'browser-desktop' ? 'text-purple-400' :
+                'text-gray-400'
+              }`}>
+                {platform.platformType}
+                {platform.isPWA && ' (PWA)'}
+                {platform.isMobile && ' (Mobile)'}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
         
-        <header className="text-center mb-6">
-          <h1 className="text-3xl md:text-5xl font-bold mb-2 bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
+        <header className="text-center mb-3 md:mb-6">
+          <h1 className="text-2xl md:text-4xl font-bold mb-1 md:mb-2 bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
             🦠 Bacterial Survival
             {platform.isPWA && platform.isMobile && (
-              <span className="ml-2 text-sm md:text-base align-middle bg-green-900/30 text-green-300 px-2 py-1 rounded-full">PWA</span>
+              <span className="ml-1 md:ml-2 text-xs md:text-sm align-middle bg-green-900/30 text-green-300 px-1 md:px-2 py-0.5 md:py-1 rounded-full">PWA</span>
             )}
           </h1>
-          <p className="text-gray-300 text-sm md:text-base">
+          <p className="text-gray-300 text-xs md:text-sm">
             Eat green dots. Avoid <span className="text-red-400 font-bold">RED</span> antibiotics. Grab blue boosters!
             {showKeyboardInstructions && (
-              <span className="block mt-1 text-green-300">Use arrow keys to move • Space to pause • R to restart</span>
+              <span className="block mt-0.5 md:mt-1 text-green-300 text-xs">Use arrow keys to move • Space to pause • R to restart</span>
             )}
           </p>
         </header>
 
-        <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-start">
+        <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-start">
           <div className="flex-1 w-full flex flex-col items-center">
-            <div className="flex justify-center items-center w-full overflow-hidden py-2 md:py-4 game-board-landscape" ref={boardRef}>
+            <div className="flex justify-center items-center w-full overflow-hidden py-1 md:py-2 game-board-landscape" ref={boardRef}>
               <div className="relative" style={{ width: responsiveBoardWidth, height: responsiveBoardHeight }}>
                 
                 {/* Board Container */}
@@ -548,127 +550,127 @@ const BacteriaGame = () => {
           </div>
 
           {/* Right Column: Stats and Controls */}
-          <div className="md:w-80 w-full space-y-4 md:space-y-6">
+          <div className="md:w-72 w-full space-y-2 md:space-y-4">
             {/* Stats Panel */}
-            <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-              <h3 className="text-lg font-bold mb-4 text-green-300 text-center">Game Stats</h3>
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-400">Score</span>
-                <span className="text-2xl font-bold text-green-400">{score}</span>
+            <div className="bg-gray-800 p-3 rounded-lg border border-gray-700">
+              <h3 className="text-base font-bold mb-2 text-green-300 text-center">Game Stats</h3>
+              <div className="flex justify-between mb-1">
+                <span className="text-gray-400 text-sm">Score</span>
+                <span className="text-xl font-bold text-green-400">{score}</span>
               </div>
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-400">Lives</span>
+              <div className="flex justify-between mb-1">
+                <span className="text-gray-400 text-sm">Lives</span>
                 <div className="flex gap-1">
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className={`w-4 h-4 rounded-full ${i < lives ? 'bg-green-500' : 'bg-gray-700'}`} />
+                    <div key={i} className={`w-3 h-3 rounded-full ${i < lives ? 'bg-green-500' : 'bg-gray-700'}`} />
                   ))}
                 </div>
               </div>
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-400">Nutrients</span>
-                <span className="text-xl font-bold text-green-300">{remainingNutrients}</span>
+              <div className="flex justify-between mb-1">
+                <span className="text-gray-400 text-sm">Nutrients</span>
+                <span className="text-lg font-bold text-green-300">{remainingNutrients}</span>
               </div>
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-400">Boosters</span>
-                <span className="text-xl font-bold text-blue-300">{remainingBoosters}</span>
+              <div className="flex justify-between mb-1">
+                <span className="text-gray-400 text-sm">Boosters</span>
+                <span className="text-lg font-bold text-blue-300">{remainingBoosters}</span>
               </div>
-              <div className="text-xs text-center text-gray-500 mt-4">
+              <div className="text-xs text-center text-gray-500 mt-2">
                 Red = Enemy <br/> Blue = Booster
               </div>
             </div>
 
             {/* Platform-specific controls */}
             {showTouchControls ? (
-              <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 touch-controls-landscape">
-                <h3 className="text-lg font-bold mb-4 text-green-300 text-center">
+              <div className="bg-gray-800 p-3 rounded-lg border border-gray-700 touch-controls-landscape">
+                <h3 className="text-base font-bold mb-2 text-green-300 text-center">
                   {platform.isPWA ? 'Touch Controls' : 'Arrow Key Controls'}
                 </h3>
                 
                 <div className="flex flex-col items-center">
                   {/* Up arrow */}
-                  <div className="mb-2">
+                  <div className="mb-1">
                     <button
                       onClick={() => nextDirectionRef.current = 'up'}
-                      className="w-16 h-16 md:w-20 md:h-20 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
+                      className="w-14 h-14 md:w-16 md:h-16 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
                     >
-                      <div className="text-3xl md:text-4xl">↑</div>
+                      <div className="text-2xl md:text-3xl">↑</div>
                     </button>
-                    <div className="text-center text-sm text-gray-400 mt-1">Up</div>
+                    <div className="text-center text-xs text-gray-400 mt-0.5">Up</div>
                   </div>
                   
                   {/* Middle row: Left, Down, Right */}
-                  <div className="flex items-center gap-4 md:gap-6">
+                  <div className="flex items-center gap-2 md:gap-4">
                     <div>
                       <button
                         onClick={() => nextDirectionRef.current = 'left'}
-                        className="w-16 h-16 md:w-20 md:h-20 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
+                        className="w-14 h-14 md:w-16 md:h-16 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
                       >
-                        <div className="text-3xl md:text-4xl">←</div>
+                        <div className="text-2xl md:text-3xl">←</div>
                       </button>
-                      <div className="text-center text-sm text-gray-400 mt-1">Left</div>
+                      <div className="text-center text-xs text-gray-400 mt-0.5">Left</div>
                     </div>
                     
                     <div>
                       <button
                         onClick={() => nextDirectionRef.current = 'down'}
-                        className="w-16 h-16 md:w-20 md:h-20 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
+                        className="w-14 h-14 md:w-16 md:h-16 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
                       >
-                        <div className="text-3xl md:text-4xl">↓</div>
+                        <div className="text-2xl md:text-3xl">↓</div>
                       </button>
-                      <div className="text-center text-sm text-gray-400 mt-1">Down</div>
+                      <div className="text-center text-xs text-gray-400 mt-0.5">Down</div>
                     </div>
                     
                     <div>
                       <button
                         onClick={() => nextDirectionRef.current = 'right'}
-                        className="w-16 h-16 md:w-20 md:h-20 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
+                        className="w-14 h-14 md:w-16 md:h-16 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
                       >
-                        <div className="text-3xl md:text-4xl">→</div>
+                        <div className="text-2xl md:text-3xl">→</div>
                       </button>
-                      <div className="text-center text-sm text-gray-400 mt-1">Right</div>
+                      <div className="text-center text-xs text-gray-400 mt-0.5">Right</div>
                     </div>
                   </div>
                   
-                  <div className="mt-4 text-sm text-gray-400 text-center">
+                  <div className="mt-2 text-xs text-gray-400 text-center">
                     <p>{platform.isPWA ? 'Tap buttons to move' : 'Use arrow keys or tap buttons to move'}</p>
-                    <p className="text-xs text-gray-500 mt-1">Space = Pause • R = Restart</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Space = Pause • R = Restart</p>
                     {platform.isPWA && (
-                      <p className="text-xs text-green-400 mt-1">Running as installed PWA</p>
+                      <p className="text-xs text-green-400 mt-0.5">Running as installed PWA</p>
                     )}
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                <h3 className="text-lg font-bold mb-4 text-purple-300 text-center">Desktop Controls</h3>
+              <div className="bg-gray-800 p-3 rounded-lg border border-gray-700">
+                <h3 className="text-base font-bold mb-2 text-purple-300 text-center">Desktop Controls</h3>
                 
-                <div className="space-y-4">
+                <div className="space-y-2">
                   <div className="text-center">
-                    <div className="inline-flex flex-col items-center gap-2 p-4 bg-gray-900/50 rounded-lg">
-                      <div className="text-2xl">🎮</div>
-                      <div className="text-sm text-gray-300">Use <span className="font-bold text-green-300">Arrow Keys</span> to move</div>
-                      <div className="text-sm text-gray-300"><span className="font-bold text-yellow-300">Space</span> to pause/resume</div>
-                      <div className="text-sm text-gray-300"><span className="font-bold text-red-300">R</span> to restart game</div>
+                    <div className="inline-flex flex-col items-center gap-1 p-2 bg-gray-900/50 rounded-lg">
+                      <div className="text-xl">🎮</div>
+                      <div className="text-xs text-gray-300">Use <span className="font-bold text-green-300">Arrow Keys</span> to move</div>
+                      <div className="text-xs text-gray-300"><span className="font-bold text-yellow-300">Space</span> to pause/resume</div>
+                      <div className="text-xs text-gray-300"><span className="font-bold text-red-300">R</span> to restart game</div>
                     </div>
                   </div>
                   
-                  <div className="text-center text-sm text-gray-400">
+                  <div className="text-center text-xs text-gray-400">
                     <p>Optimized for keyboard play</p>
-                    <p className="text-xs text-gray-500 mt-1">Touch controls hidden on desktop</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Touch controls hidden on desktop</p>
                   </div>
                 </div>
               </div>
             )}
 
-            <button onClick={initializeGame} className="w-full py-3 bg-gray-700 hover:bg-gray-600 rounded font-bold">Restart (R)</button>
+            <button onClick={initializeGame} className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded font-bold text-sm">Restart (R)</button>
           </div>
         </div>
 
-        <footer className="mt-6 text-center text-gray-500 text-sm">
+        <footer className="mt-3 md:mt-4 text-center text-gray-500 text-xs">
           <p>Move the bacteria with {showTouchControls ? 'on-screen controls or ' : ''}arrow keys. Eat all green dots to win!</p>
-          <p className="mt-2">Avoid red antibiotics unless you have a blue booster active.</p>
+          <p className="mt-1">Avoid red antibiotics unless you have a blue booster active.</p>
           {platform.isPWA && (
-            <p className="mt-2 text-green-400 text-xs">
+            <p className="mt-1 text-green-400 text-xs">
               ✓ Running as Progressive Web App {platform.isMobile ? 'on mobile' : 'on desktop'}
             </p>
           )}
