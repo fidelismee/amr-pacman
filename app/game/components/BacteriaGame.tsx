@@ -61,6 +61,8 @@ const BacteriaGame = () => {
   // Auto-focus for PWA/mobile, manual focus for desktop
   const [hasFocus, setHasFocus] = useState(platform.isPWA || platform.isMobile);
   const [isRunning, setIsRunning] = useState(true);
+  // Orientation detection for mobile PWA
+  const [isPortrait, setIsPortrait] = useState(false);
 
   const antibioticDirectionsRef = useRef<Direction[]>([...INITIAL_ENEMY_DIRECTIONS]);
   const nextDirectionRef = useRef<Direction | null>(null);
@@ -88,6 +90,23 @@ const BacteriaGame = () => {
     window.addEventListener('resize', updateCellSize);
     return () => window.removeEventListener('resize', updateCellSize);
   }, []);
+  
+  // Detect orientation for mobile PWA
+  useEffect(() => {
+    const checkOrientation = () => {
+      const isPortraitMode = window.innerHeight > window.innerWidth;
+      setIsPortrait(isPortraitMode && platform.isMobile);
+    };
+    
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    
+    return () => {
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
+    };
+  }, [platform.isMobile]);
   
   const responsiveBoardWidth = GRID_WIDTH * responsiveCellSize;
   const responsiveBoardHeight = GRID_HEIGHT * responsiveCellSize;
@@ -384,6 +403,17 @@ const BacteriaGame = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-gray-950 text-white p-3 md:p-6 touch-none game-landscape-optimized">
       <div className="max-w-6xl mx-auto safe-area-padding">
+        {/* Portrait mode warning for mobile PWA */}
+        {isPortrait && platform.isPWA && (
+          <div className="mb-4 p-4 bg-yellow-900/50 border border-yellow-700 rounded-lg text-center">
+            <div className="text-yellow-300 font-bold mb-2">📱 Rotate Your Device</div>
+            <p className="text-yellow-200 text-sm">
+              For the best experience, please rotate your device to landscape mode.
+            </p>
+            <div className="mt-2 text-2xl animate-pulse">↻</div>
+          </div>
+        )}
+        
         {/* Platform Indicator - for debugging */}
         <div className="mb-2 text-xs text-center">
           <div className="inline-flex items-center gap-2 bg-gray-800/50 px-3 py-1 rounded-full border border-gray-700">
