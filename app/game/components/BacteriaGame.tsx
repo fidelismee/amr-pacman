@@ -382,8 +382,8 @@ const BacteriaGame = () => {
   const antibioticOffset = (responsiveCellSize - antibioticSize) / 2;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-gray-950 text-white p-3 md:p-6 touch-none">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-gray-950 text-white p-3 md:p-6 touch-none game-landscape-optimized">
+      <div className="max-w-6xl mx-auto safe-area-padding">
         {/* Platform Indicator - for debugging */}
         <div className="mb-2 text-xs text-center">
           <div className="inline-flex items-center gap-2 bg-gray-800/50 px-3 py-1 rounded-full border border-gray-700">
@@ -418,7 +418,7 @@ const BacteriaGame = () => {
 
         <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-start">
           <div className="flex-1 w-full flex flex-col items-center">
-            <div className="flex justify-center items-center w-full overflow-hidden py-2 md:py-4" ref={boardRef}>
+            <div className="flex justify-center items-center w-full overflow-hidden py-2 md:py-4 game-board-landscape" ref={boardRef}>
               <div className="relative" style={{ width: responsiveBoardWidth, height: responsiveBoardHeight }}>
                 
                 {/* Board Container */}
@@ -549,7 +549,7 @@ const BacteriaGame = () => {
 
             {/* Platform-specific controls */}
             {showTouchControls ? (
-              <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+              <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 touch-controls-landscape">
                 <h3 className="text-lg font-bold mb-4 text-green-300 text-center">
                   {platform.isPWA ? 'Touch Controls' : 'Arrow Key Controls'}
                 </h3>

@@ -62,3 +62,65 @@ button,
 * {
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 }
+
+/* Landscape optimization for mobile PWA */
+@media (orientation: landscape) and (max-width: 900px) {
+  /* Optimize game layout for landscape */
+  .game-landscape-optimized {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  /* Ensure game board fits well in landscape */
+  .game-board-landscape {
+    max-height: 85vh;
+  }
+  
+  /* Adjust touch controls for landscape */
+  .touch-controls-landscape {
+    transform: scale(0.9);
+    margin-top: -10px;
+  }
+  
+  /* Improve text readability in landscape */
+  body {
+    font-size: 14px;
+  }
+}
+
+/* iPhone notch and safe area support */
+@supports (padding: max(0px)) {
+  .safe-area-padding {
+    padding-left: max(env(safe-area-inset-left), 1rem);
+    padding-right: max(env(safe-area-inset-right), 1rem);
+    padding-top: max(env(safe-area-inset-top), 1rem);
+    padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+  }
+}
+
+/* Force landscape orientation for PWA on mobile */
+@media (max-width: 768px) {
+  html {
+    /* Encourage landscape on mobile */
+    height: 100vh;
+    width: 100vw;
+  }
+  
+  body {
+    /* Use full viewport */
+    min-height: 100vh;
+    min-width: 100vw;
+  }
+}
+
+/* Hide scrollbars but allow scrolling */
+::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
