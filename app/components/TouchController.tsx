@@ -41,22 +41,19 @@ const TouchController = ({
     }`;
 
   return (
-    <div className="relative w-full max-w-xs md:max-w-sm mx-auto">
-      {/* Handheld console styling */}
-      <div className="absolute -inset-1.5 md:-inset-3 bg-gradient-to-b from-gray-900 to-black rounded-xl md:rounded-2xl border-2 md:border-3 border-gray-800 shadow-lg md:shadow-xl">
-        {/* Decorative elements */}
-        <div className="absolute -left-1 md:-left-1.5 top-1/2 -translate-y-1/2 w-3 md:w-6 h-12 md:h-20 bg-gradient-to-r from-gray-800 to-gray-900 rounded-r-lg border-l-2 border-gray-700"></div>
-        <div className="absolute -right-1 md:-right-1.5 top-1/2 -translate-y-1/2 w-3 md:w-6 h-12 md:h-20 bg-gradient-to-l from-gray-800 to-gray-900 rounded-l-lg border-r-2 border-gray-700"></div>
+    <div className="relative w-full max-w-xs md:max-w-sm mx-auto touch-controls-landscape">
+      {/* Handheld console styling - more compact for landscape */}
+      <div className="absolute -inset-1 md:-inset-2 bg-gradient-to-b from-gray-900 to-black rounded-xl md:rounded-2xl border-2 border-gray-800 shadow-lg">
+        {/* Decorative elements - smaller for compact mode */}
+        <div className="absolute -left-0.5 md:-left-1 top-1/2 -translate-y-1/2 w-2 md:w-4 h-8 md:h-16 bg-gradient-to-r from-gray-800 to-gray-900 rounded-r-lg border-l border-gray-700"></div>
+        <div className="absolute -right-0.5 md:-right-1 top-1/2 -translate-y-1/2 w-2 md:w-4 h-8 md:h-16 bg-gradient-to-l from-gray-800 to-gray-900 rounded-l-lg border-r border-gray-700"></div>
       </div>
 
-      {/* D-pad / Arrow controls */}
-      <div className="relative bg-gradient-to-br from-gray-800 to-gray-900 p-2 md:p-4 rounded-lg md:rounded-xl border-2 border-gray-700 shadow-inner">
+      {/* D-pad / Arrow controls - more compact */}
+      <div className="relative bg-gradient-to-br from-gray-800 to-gray-900 p-1.5 md:p-3 rounded-lg border-2 border-gray-700 shadow-inner">
         
-        {/* GRID LAYOUT UPDATE:
-           - Changed height to h-32/h-48 (rectangular aspect ratio)
-           - Changed to grid-rows-2 (Inverted T shape)
-        */}
-        <div className="grid grid-cols-3 grid-rows-2 gap-1 md:gap-2 w-36 h-24 md:w-48 md:h-36 mx-auto">
+        {/* Compact grid layout for landscape */}
+        <div className="grid grid-cols-3 grid-rows-2 gap-0.5 md:gap-1 w-32 h-20 md:w-40 md:h-28 mx-auto">
           
           {/* Row 1: Up Key (Centered) */}
           <div className="col-start-2 row-start-1">
@@ -67,7 +64,7 @@ const TouchController = ({
               className={getButtonStyles(disabled)}
               aria-label="Move Up"
             >
-              ↑
+              <span className="text-lg md:text-xl">↑</span>
             </button>
           </div>
           
@@ -80,7 +77,7 @@ const TouchController = ({
               className={getButtonStyles(disabled)}
               aria-label="Move Left"
             >
-              ←
+              <span className="text-lg md:text-xl">←</span>
             </button>
           </div>
           
@@ -92,7 +89,7 @@ const TouchController = ({
               className={getButtonStyles(disabled)}
               aria-label="Move Down"
             >
-              ↓
+              <span className="text-lg md:text-xl">↓</span>
             </button>
           </div>
           
@@ -104,44 +101,44 @@ const TouchController = ({
               className={getButtonStyles(disabled)}
               aria-label="Move Right"
             >
-              →
+              <span className="text-lg md:text-xl">→</span>
             </button>
           </div>
           
         </div>
 
-        {/* Action buttons */}
-        <div className="flex justify-between mt-3 md:mt-4 px-1 md:px-3">
+        {/* Action buttons - more compact */}
+        <div className="flex justify-between mt-2 md:mt-3 px-1">
           <button
             onTouchStart={(e) => { e.preventDefault(); onPauseToggle?.(); }}
             onMouseDown={(e) => { e.preventDefault(); onPauseToggle?.(); }}
             disabled={disabled}
-            className={`px-2 md:px-4 py-1 md:py-2 rounded-lg font-bold text-xs md:text-sm transition-all duration-150 active:scale-95 ${
+            className={`px-1.5 md:px-3 py-0.5 md:py-1 rounded-lg font-bold text-xs transition-all duration-150 active:scale-95 ${
               disabled 
                 ? 'bg-gray-700/50 text-gray-500 cursor-not-allowed' 
                 : 'bg-gradient-to-r from-yellow-600 to-amber-800 text-white hover:from-yellow-500 hover:to-amber-700 active:from-yellow-700 active:to-amber-900 shadow-lg'
             }`}
           >
-            ⏯️ <span className="hidden sm:inline">Pause</span>
+            ⏯️ <span className="hidden xs:inline text-xs">Pause</span>
           </button>
           
           <button
             onTouchStart={(e) => { e.preventDefault(); onRestart?.(); }}
             onMouseDown={(e) => { e.preventDefault(); onRestart?.(); }}
             disabled={disabled}
-            className={`px-2 md:px-4 py-1 md:py-2 rounded-lg font-bold text-xs md:text-sm transition-all duration-150 active:scale-95 ${
+            className={`px-1.5 md:px-3 py-0.5 md:py-1 rounded-lg font-bold text-xs transition-all duration-150 active:scale-95 ${
               disabled 
                 ? 'bg-gray-700/50 text-gray-500 cursor-not-allowed' 
                 : 'bg-gradient-to-r from-red-600 to-rose-800 text-white hover:from-red-500 hover:to-rose-700 active:from-red-700 active:to-rose-900 shadow-lg'
             }`}
           >
-            🔄 <span className="hidden sm:inline">Restart</span>
+            🔄 <span className="hidden xs:inline text-xs">Restart</span>
           </button>
         </div>
 
-        {/* Touch instructions */}
-        <div className="mt-2 md:mt-3 text-center text-xs text-gray-400">
-          <p>Tap buttons to move</p>
+        {/* Touch instructions - minimal */}
+        <div className="mt-1 md:mt-2 text-center text-[10px] md:text-xs text-gray-400">
+          <p>Tap to move</p>
         </div>
       </div>
     </div>

@@ -4,6 +4,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { usePlatform, useShouldShowTouchControls, useShouldShowKeyboardInstructions } from '../../contexts/PlatformContext';
+import TouchController from '../../components/TouchController';
 
 // Types
 type Direction = 'up' | 'down' | 'left' | 'right';
@@ -82,9 +83,13 @@ const BacteriaGame = () => {
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
       
+      // Check if we're in landscape mode on mobile
+      const isLandscape = viewportWidth > viewportHeight && platform.isMobile;
+      
       // Reserve space for UI elements (header, stats, controls, padding)
-      const reservedWidth = platform.isMobile ? 32 : 64; // padding
-      const reservedHeight = platform.isMobile ? 280 : 200; // header + footer + padding
+      // Use less reserved space for landscape mode to maximize game board
+      const reservedWidth = isLandscape ? 24 : (platform.isMobile ? 32 : 64); // padding
+      const reservedHeight = isLandscape ? 180 : (platform.isMobile ? 280 : 200); // header + footer + padding
       
       const availableWidth = viewportWidth - reservedWidth;
       const availableHeight = viewportHeight - reservedHeight;
@@ -96,8 +101,10 @@ const BacteriaGame = () => {
       // Use the smaller of the two to ensure board fits in viewport
       const newCellSize = Math.min(cellSizeByWidth, cellSizeByHeight);
       
-      // Set cell size with min/max constraints
-      setResponsiveCellSize(Math.max(16, Math.min(newCellSize, 32)));
+      // Set cell size with min/max constraints - allow larger cells in landscape
+      const minSize = isLandscape ? 18 : 16;
+      const maxSize = isLandscape ? 36 : 32;
+      setResponsiveCellSize(Math.max(minSize, Math.min(newCellSize, maxSize)));
     };
     
     updateCellSize();
@@ -419,8 +426,8 @@ const BacteriaGame = () => {
   const antibioticOffset = (responsiveCellSize - antibioticSize) / 2;
 
   return (
-    <div className="min-h-dvh max-h-dvh bg-gradient-to-br from-slate-900 to-gray-950 text-white touch-none overflow-hidden flex flex-col">
-      <div className="w-full max-w-6xl mx-auto flex-1 flex flex-col overflow-y-auto overflow-x-hidden safe-area-padding p-2 md:p-4">
+    <div className="min-h-dvh max-h-dvh bg-gradient-to-br from-slate-900 to-gray-950 text-white touch-none overflow-hidden flex flex-col game-landscape-optimized">
+      <div className="w-full max-w-6xl mx-auto flex-1 flex flex-col overflow-y-auto overflow-x-hidden safe-area-padding p-2 md:p-4 full-width-landscape">
         {/* Portrait mode warning for mobile PWA */}
         {isPortrait && platform.isPWA && (
           <div className="mb-2 p-3 bg-yellow-900/50 border border-yellow-700 rounded-lg text-center">
@@ -570,7 +577,7 @@ const BacteriaGame = () => {
           {/* Right Column: Stats and Controls */}
           <div className="md:w-72 w-full space-y-2 md:space-y-4">
             {/* Stats Panel */}
-            <div className="bg-gray-800 p-3 rounded-lg border border-gray-700">
+            <div className="bg-gray-800 p-3 rounded-lg border border-gray-700 game-stats-compact">
               <h3 className="text-base font-bold mb-2 text-green-300 text-center">Game Stats</h3>
               <div className="flex justify-between mb-1">
                 <span className="text-gray-400 text-sm">Score</span>
@@ -599,69 +606,22 @@ const BacteriaGame = () => {
 
             {/* Platform-specific controls */}
             {showTouchControls ? (
-              <div className="bg-gray-800 p-2 md:p-3 rounded-lg border border-gray-700">
+              <div className="bg-gray-800 p-2 md:p-3 rounded-lg border border-gray-700 touch-controls-landscape">
                 <h3 className="text-sm md:text-base font-bold mb-2 text-green-300 text-center">
-                  {platform.isPWA ? 'Touch Controls' : 'Controls'}
+                  {platform.isPWA ? '🎮 Gaming Console Controls' : '🎮 Controls'}
                 </h3>
                 
-                <div className="flex flex-col items-center">
-                  {/* Up arrow */}
-                  <div className="mb-1">
-                    <button
-                      onClick={() => nextDirectionRef.current = 'up'}
-                      onTouchStart={(e) => {
-                        e.preventDefault();
-                        nextDirectionRef.current = 'up';
-                      }}
-                      className="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center bg-gray-700 active:bg-gray-500 rounded-lg border border-gray-600 transition-colors touch-manipulation"
-                      style={{ touchAction: 'manipulation' }}
-                    >
-                      <div className="text-xl md:text-2xl pointer-events-none">↑</div>
-                    </button>
-                  </div>
-                  
-                  {/* Middle row: Left, Down, Right */}
-                  <div className="flex items-center gap-1 md:gap-2">
-                    <button
-                      onClick={() => nextDirectionRef.current = 'left'}
-                      onTouchStart={(e) => {
-                        e.preventDefault();
-                        nextDirectionRef.current = 'left';
-                      }}
-                      className="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center bg-gray-700 active:bg-gray-500 rounded-lg border border-gray-600 transition-colors touch-manipulation"
-                      style={{ touchAction: 'manipulation' }}
-                    >
-                      <div className="text-xl md:text-2xl pointer-events-none">←</div>
-                    </button>
-                    
-                    <button
-                      onClick={() => nextDirectionRef.current = 'down'}
-                      onTouchStart={(e) => {
-                        e.preventDefault();
-                        nextDirectionRef.current = 'down';
-                      }}
-                      className="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center bg-gray-700 active:bg-gray-500 rounded-lg border border-gray-600 transition-colors touch-manipulation"
-                      style={{ touchAction: 'manipulation' }}
-                    >
-                      <div className="text-xl md:text-2xl pointer-events-none">↓</div>
-                    </button>
-                    
-                    <button
-                      onClick={() => nextDirectionRef.current = 'right'}
-                      onTouchStart={(e) => {
-                        e.preventDefault();
-                        nextDirectionRef.current = 'right';
-                      }}
-                      className="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center bg-gray-700 active:bg-gray-500 rounded-lg border border-gray-600 transition-colors touch-manipulation"
-                      style={{ touchAction: 'manipulation' }}
-                    >
-                      <div className="text-xl md:text-2xl pointer-events-none">→</div>
-                    </button>
-                  </div>
-                  
-                  <div className="mt-2 text-xs text-gray-400 text-center">
-                    <p className="text-xs">{platform.isPWA ? 'Tap to move' : 'Tap or use arrow keys'}</p>
-                  </div>
+                <TouchController
+                  onDirectionChange={(direction) => {
+                    nextDirectionRef.current = direction;
+                  }}
+                  onPauseToggle={() => setIsRunning(prev => !prev)}
+                  onRestart={initializeGame}
+                  disabled={!gameActive}
+                />
+                
+                <div className="mt-2 text-xs text-gray-400 text-center">
+                  <p className="text-xs">{platform.isPWA ? 'Tap to move • Gaming console vibe' : 'Tap or use arrow keys'}</p>
                 </div>
               </div>
             ) : (
