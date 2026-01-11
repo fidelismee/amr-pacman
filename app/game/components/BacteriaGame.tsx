@@ -427,24 +427,24 @@ const BacteriaGame = () => {
 
   return (
     <div className="min-h-dvh max-h-dvh bg-gradient-to-br from-slate-900 to-gray-950 text-white touch-none overflow-hidden flex flex-col game-landscape-optimized">
-      <div className="w-full max-w-6xl mx-auto flex-1 flex flex-col overflow-y-auto overflow-x-hidden safe-area-padding p-2 md:p-4 full-width-landscape">
-        {/* Portrait mode warning for mobile PWA */}
+      <div className="w-full max-w-6xl mx-auto flex-1 flex flex-col overflow-y-auto overflow-x-hidden safe-area-padding p-1 md:p-2 full-width-landscape">
+        {/* Portrait mode warning for mobile PWA - More Compact */}
         {isPortrait && platform.isPWA && (
-          <div className="mb-2 p-3 bg-yellow-900/50 border border-yellow-700 rounded-lg text-center">
-            <div className="text-yellow-300 font-bold mb-1 text-sm">📱 Rotate Your Device</div>
-            <p className="text-yellow-200 text-xs">
-              For the best experience, please rotate your device to landscape mode.
+          <div className="mb-1 p-2 bg-yellow-900/50 border border-yellow-700 rounded-lg text-center">
+            <div className="text-yellow-300 font-bold mb-0.5 text-xs">📱 Rotate Device</div>
+            <p className="text-yellow-200 text-[10px]">
+              Rotate to landscape for best experience
             </p>
-            <div className="mt-1 text-xl animate-pulse">↻</div>
+            <div className="mt-0.5 text-lg animate-pulse">↻</div>
           </div>
         )}
         
         {/* Platform Indicator - for debugging (hidden on mobile to save space) */}
         {!platform.isMobile && (
-          <div className="mb-1 md:mb-2 text-xs text-center">
-            <div className="inline-flex items-center gap-2 bg-gray-800/50 px-2 md:px-3 py-0.5 md:py-1 rounded-full border border-gray-700">
-              <span className="text-gray-400">Platform:</span>
-              <span className={`font-medium ${
+          <div className="mb-0.5 md:mb-1 text-xs text-center">
+            <div className="inline-flex items-center gap-1 bg-gray-800/50 px-1 md:px-2 py-0.25 md:py-0.5 rounded-full border border-gray-700">
+              <span className="text-gray-400 text-[10px]">Platform:</span>
+              <span className={`font-medium text-[10px] ${
                 platform.platformType === 'pwa-mobile' ? 'text-green-400' :
                 platform.platformType === 'browser-mobile' ? 'text-blue-400' :
                 platform.platformType === 'browser-desktop' ? 'text-purple-400' :
@@ -458,22 +458,22 @@ const BacteriaGame = () => {
           </div>
         )}
         
-        <header className="text-center mb-3 md:mb-6">
-          <h1 className="text-2xl md:text-4xl font-bold mb-1 md:mb-2 bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
+        <header className="text-center mb-1 md:mb-2">
+          <h1 className="text-xl md:text-2xl font-bold mb-0.5 md:mb-1 bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
             🦠 Bacterial Survival
             {platform.isPWA && platform.isMobile && (
-              <span className="ml-1 md:ml-2 text-xs md:text-sm align-middle bg-green-900/30 text-green-300 px-1 md:px-2 py-0.5 md:py-1 rounded-full">PWA</span>
+              <span className="ml-0.5 md:ml-1 text-xs align-middle bg-green-900/30 text-green-300 px-0.5 md:px-1 py-0.25 md:py-0.5 rounded-full">PWA</span>
             )}
           </h1>
-          <p className="text-gray-300 text-xs md:text-sm">
+          <p className="text-gray-300 text-xs">
             Eat green dots. Avoid <span className="text-red-400 font-bold">RED</span> antibiotics. Grab blue boosters!
             {showKeyboardInstructions && (
-              <span className="block mt-0.5 md:mt-1 text-green-300 text-xs">Use arrow keys to move • Space to pause • R to restart</span>
+              <span className="block mt-0.25 text-green-300 text-xs">Use arrow keys to move • Space to pause • R to restart</span>
             )}
           </p>
         </header>
 
-        <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-start">
+        <div className="flex flex-col md:flex-row gap-1 md:gap-2 items-start">
           <div className="flex-1 w-full flex flex-col items-center">
             <div className="flex justify-center items-center w-full overflow-hidden py-1 md:py-2 game-board-landscape" ref={boardRef}>
               <div className="relative" style={{ width: responsiveBoardWidth, height: responsiveBoardHeight }}>
@@ -574,41 +574,41 @@ const BacteriaGame = () => {
 
           </div>
 
-          {/* Right Column: Stats and Controls */}
-          <div className="md:w-72 w-full space-y-2 md:space-y-4">
-            {/* Stats Panel */}
-            <div className="bg-gray-800 p-3 rounded-lg border border-gray-700 game-stats-compact">
-              <h3 className="text-base font-bold mb-2 text-green-300 text-center">Game Stats</h3>
-              <div className="flex justify-between mb-1">
-                <span className="text-gray-400 text-sm">Score</span>
-                <span className="text-xl font-bold text-green-400">{score}</span>
+          {/* Right Column: Stats and Controls - More Compact */}
+          <div className="md:w-64 w-full space-y-1 md:space-y-2">
+            {/* Stats Panel - More Compact */}
+            <div className="bg-gray-800 p-2 rounded-lg border border-gray-700 game-stats-compact">
+              <h3 className="text-sm font-bold mb-1 text-green-300 text-center">Game Stats</h3>
+              <div className="flex justify-between mb-0.5">
+                <span className="text-gray-400 text-xs">Score</span>
+                <span className="text-lg font-bold text-green-400">{score}</span>
               </div>
-              <div className="flex justify-between mb-1">
-                <span className="text-gray-400 text-sm">Lives</span>
-                <div className="flex gap-1">
+              <div className="flex justify-between mb-0.5">
+                <span className="text-gray-400 text-xs">Lives</span>
+                <div className="flex gap-0.5">
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className={`w-3 h-3 rounded-full ${i < lives ? 'bg-green-500' : 'bg-gray-700'}`} />
+                    <div key={i} className={`w-2.5 h-2.5 rounded-full ${i < lives ? 'bg-green-500' : 'bg-gray-700'}`} />
                   ))}
                 </div>
               </div>
-              <div className="flex justify-between mb-1">
-                <span className="text-gray-400 text-sm">Nutrients</span>
-                <span className="text-lg font-bold text-green-300">{remainingNutrients}</span>
+              <div className="flex justify-between mb-0.5">
+                <span className="text-gray-400 text-xs">Nutrients</span>
+                <span className="text-base font-bold text-green-300">{remainingNutrients}</span>
               </div>
-              <div className="flex justify-between mb-1">
-                <span className="text-gray-400 text-sm">Boosters</span>
-                <span className="text-lg font-bold text-blue-300">{remainingBoosters}</span>
+              <div className="flex justify-between mb-0.5">
+                <span className="text-gray-400 text-xs">Boosters</span>
+                <span className="text-base font-bold text-blue-300">{remainingBoosters}</span>
               </div>
-              <div className="text-xs text-center text-gray-500 mt-2">
-                Red = Enemy <br/> Blue = Booster
+              <div className="text-[10px] text-center text-gray-500 mt-1">
+                Red = Enemy • Blue = Booster
               </div>
             </div>
 
-            {/* Platform-specific controls */}
+            {/* Platform-specific controls - More Compact */}
             {showTouchControls ? (
-              <div className="bg-gray-800 p-2 md:p-3 rounded-lg border border-gray-700 touch-controls-landscape">
-                <h3 className="text-sm md:text-base font-bold mb-2 text-green-300 text-center">
-                  {platform.isPWA ? '🎮 Gaming Console Controls' : '🎮 Controls'}
+              <div className="bg-gray-800 p-1.5 md:p-2 rounded-lg border border-gray-700 touch-controls-landscape">
+                <h3 className="text-xs md:text-sm font-bold mb-1 text-green-300 text-center">
+                  {platform.isPWA ? '🎮 Controls' : '🎮 Controls'}
                 </h3>
                 
                 <TouchController
@@ -620,41 +620,41 @@ const BacteriaGame = () => {
                   disabled={!gameActive}
                 />
                 
-                <div className="mt-2 text-xs text-gray-400 text-center">
-                  <p className="text-xs">{platform.isPWA ? 'Tap to move • Gaming console vibe' : 'Tap or use arrow keys'}</p>
+                <div className="mt-1 text-[10px] text-gray-400 text-center">
+                  <p className="text-[10px]">{platform.isPWA ? 'Tap to move' : 'Tap or use arrow keys'}</p>
                 </div>
               </div>
             ) : (
-              <div className="bg-gray-800 p-3 rounded-lg border border-gray-700">
-                <h3 className="text-base font-bold mb-2 text-purple-300 text-center">Desktop Controls</h3>
+              <div className="bg-gray-800 p-2 rounded-lg border border-gray-700">
+                <h3 className="text-sm font-bold mb-1 text-purple-300 text-center">Desktop Controls</h3>
                 
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <div className="text-center">
-                    <div className="inline-flex flex-col items-center gap-1 p-2 bg-gray-900/50 rounded-lg">
-                      <div className="text-xl">🎮</div>
-                      <div className="text-xs text-gray-300">Use <span className="font-bold text-green-300">Arrow Keys</span> to move</div>
-                      <div className="text-xs text-gray-300"><span className="font-bold text-yellow-300">Space</span> to pause/resume</div>
-                      <div className="text-xs text-gray-300"><span className="font-bold text-red-300">R</span> to restart game</div>
+                    <div className="inline-flex flex-col items-center gap-0.5 p-1.5 bg-gray-900/50 rounded-lg">
+                      <div className="text-lg">🎮</div>
+                      <div className="text-[10px] text-gray-300">Use <span className="font-bold text-green-300">Arrow Keys</span> to move</div>
+                      <div className="text-[10px] text-gray-300"><span className="font-bold text-yellow-300">Space</span> to pause/resume</div>
+                      <div className="text-[10px] text-gray-300"><span className="font-bold text-red-300">R</span> to restart game</div>
                     </div>
                   </div>
                   
-                  <div className="text-center text-xs text-gray-400">
+                  <div className="text-center text-[10px] text-gray-400">
                     <p>Optimized for keyboard play</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Touch controls hidden on desktop</p>
+                    <p className="text-[10px] text-gray-500 mt-0.25">Touch controls hidden on desktop</p>
                   </div>
                 </div>
               </div>
             )}
 
-            <button onClick={initializeGame} className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded font-bold text-sm">Restart (R)</button>
+            <button onClick={initializeGame} className="w-full py-1.5 bg-gray-700 hover:bg-gray-600 rounded font-bold text-xs">Restart (R)</button>
           </div>
         </div>
 
-        <footer className="mt-3 md:mt-4 text-center text-gray-500 text-xs">
+        <footer className="mt-1 md:mt-2 text-center text-gray-500 text-[10px]">
           <p>Move the bacteria with {showTouchControls ? 'on-screen controls or ' : ''}arrow keys. Eat all green dots to win!</p>
-          <p className="mt-1">Avoid red antibiotics unless you have a blue booster active.</p>
+          <p className="mt-0.5">Avoid red antibiotics unless you have a blue booster active.</p>
           {platform.isPWA && (
-            <p className="mt-1 text-green-400 text-xs">
+            <p className="mt-0.5 text-green-400 text-[10px]">
               ✓ Running as Progressive Web App {platform.isMobile ? 'on mobile' : 'on desktop'}
             </p>
           )}
