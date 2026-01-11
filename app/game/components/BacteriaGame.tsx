@@ -78,18 +78,36 @@ const BacteriaGame = () => {
   // Update responsive cell size on window resize
   useEffect(() => {
     const updateCellSize = () => {
-      if (boardRef.current) {
-        const containerWidth = boardRef.current.parentElement?.clientWidth || window.innerWidth;
-        const maxBoardWidth = Math.min(containerWidth - 32, 360); // 360px is the original size, 32px for padding
-        const newCellSize = Math.floor(maxBoardWidth / GRID_WIDTH);
-        setResponsiveCellSize(Math.max(20, newCellSize)); // Minimum 20px cell size
-      }
+      // Get available viewport dimensions
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      // Reserve space for UI elements (header, stats, controls, padding)
+      const reservedWidth = platform.isMobile ? 32 : 64; // padding
+      const reservedHeight = platform.isMobile ? 280 : 200; // header + footer + padding
+      
+      const availableWidth = viewportWidth - reservedWidth;
+      const availableHeight = viewportHeight - reservedHeight;
+      
+      // Calculate cell size based on both width and height constraints
+      const cellSizeByWidth = Math.floor(availableWidth / GRID_WIDTH);
+      const cellSizeByHeight = Math.floor(availableHeight / GRID_HEIGHT);
+      
+      // Use the smaller of the two to ensure board fits in viewport
+      const newCellSize = Math.min(cellSizeByWidth, cellSizeByHeight);
+      
+      // Set cell size with min/max constraints
+      setResponsiveCellSize(Math.max(16, Math.min(newCellSize, 32)));
     };
     
     updateCellSize();
     window.addEventListener('resize', updateCellSize);
-    return () => window.removeEventListener('resize', updateCellSize);
-  }, []);
+    window.addEventListener('orientationchange', updateCellSize);
+    return () => {
+      window.removeEventListener('resize', updateCellSize);
+      window.removeEventListener('orientationchange', updateCellSize);
+    };
+  }, [platform.isMobile]);
   
   // Detect orientation for mobile PWA
   useEffect(() => {
@@ -401,8 +419,8 @@ const BacteriaGame = () => {
   const antibioticOffset = (responsiveCellSize - antibioticSize) / 2;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-gray-950 text-white p-2 md:p-4 touch-none game-landscape-optimized">
-      <div className="max-w-6xl mx-auto safe-area-padding">
+    <div className="min-h-dvh max-h-dvh bg-gradient-to-br from-slate-900 to-gray-950 text-white touch-none overflow-hidden flex flex-col">
+      <div className="w-full max-w-6xl mx-auto flex-1 flex flex-col overflow-y-auto overflow-x-hidden safe-area-padding p-2 md:p-4">
         {/* Portrait mode warning for mobile PWA */}
         {isPortrait && platform.isPWA && (
           <div className="mb-2 p-3 bg-yellow-900/50 border border-yellow-700 rounded-lg text-center">
@@ -581,9 +599,9 @@ const BacteriaGame = () => {
 
             {/* Platform-specific controls */}
             {showTouchControls ? (
-              <div className="bg-gray-800 p-3 rounded-lg border border-gray-700 touch-controls-landscape">
-                <h3 className="text-base font-bold mb-2 text-green-300 text-center">
-                  {platform.isPWA ? 'Touch Controls' : 'Arrow Key Controls'}
+              <div className="bg-gray-800 p-2 md:p-3 rounded-lg border border-gray-700">
+                <h3 className="text-sm md:text-base font-bold mb-2 text-green-300 text-center">
+                  {platform.isPWA ? 'Touch Controls' : 'Controls'}
                 </h3>
                 
                 <div className="flex flex-col items-center">
@@ -591,52 +609,58 @@ const BacteriaGame = () => {
                   <div className="mb-1">
                     <button
                       onClick={() => nextDirectionRef.current = 'up'}
-                      className="w-14 h-14 md:w-16 md:h-16 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
+                      onTouchStart={(e) => {
+                        e.preventDefault();
+                        nextDirectionRef.current = 'up';
+                      }}
+                      className="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center bg-gray-700 active:bg-gray-500 rounded-lg border border-gray-600 transition-colors touch-manipulation"
+                      style={{ touchAction: 'manipulation' }}
                     >
-                      <div className="text-2xl md:text-3xl">↑</div>
+                      <div className="text-xl md:text-2xl pointer-events-none">↑</div>
                     </button>
-                    <div className="text-center text-xs text-gray-400 mt-0.5">Up</div>
                   </div>
                   
                   {/* Middle row: Left, Down, Right */}
-                  <div className="flex items-center gap-2 md:gap-4">
-                    <div>
-                      <button
-                        onClick={() => nextDirectionRef.current = 'left'}
-                        className="w-14 h-14 md:w-16 md:h-16 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
-                      >
-                        <div className="text-2xl md:text-3xl">←</div>
-                      </button>
-                      <div className="text-center text-xs text-gray-400 mt-0.5">Left</div>
-                    </div>
+                  <div className="flex items-center gap-1 md:gap-2">
+                    <button
+                      onClick={() => nextDirectionRef.current = 'left'}
+                      onTouchStart={(e) => {
+                        e.preventDefault();
+                        nextDirectionRef.current = 'left';
+                      }}
+                      className="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center bg-gray-700 active:bg-gray-500 rounded-lg border border-gray-600 transition-colors touch-manipulation"
+                      style={{ touchAction: 'manipulation' }}
+                    >
+                      <div className="text-xl md:text-2xl pointer-events-none">←</div>
+                    </button>
                     
-                    <div>
-                      <button
-                        onClick={() => nextDirectionRef.current = 'down'}
-                        className="w-14 h-14 md:w-16 md:h-16 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
-                      >
-                        <div className="text-2xl md:text-3xl">↓</div>
-                      </button>
-                      <div className="text-center text-xs text-gray-400 mt-0.5">Down</div>
-                    </div>
+                    <button
+                      onClick={() => nextDirectionRef.current = 'down'}
+                      onTouchStart={(e) => {
+                        e.preventDefault();
+                        nextDirectionRef.current = 'down';
+                      }}
+                      className="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center bg-gray-700 active:bg-gray-500 rounded-lg border border-gray-600 transition-colors touch-manipulation"
+                      style={{ touchAction: 'manipulation' }}
+                    >
+                      <div className="text-xl md:text-2xl pointer-events-none">↓</div>
+                    </button>
                     
-                    <div>
-                      <button
-                        onClick={() => nextDirectionRef.current = 'right'}
-                        className="w-14 h-14 md:w-16 md:h-16 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
-                      >
-                        <div className="text-2xl md:text-3xl">→</div>
-                      </button>
-                      <div className="text-center text-xs text-gray-400 mt-0.5">Right</div>
-                    </div>
+                    <button
+                      onClick={() => nextDirectionRef.current = 'right'}
+                      onTouchStart={(e) => {
+                        e.preventDefault();
+                        nextDirectionRef.current = 'right';
+                      }}
+                      className="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center bg-gray-700 active:bg-gray-500 rounded-lg border border-gray-600 transition-colors touch-manipulation"
+                      style={{ touchAction: 'manipulation' }}
+                    >
+                      <div className="text-xl md:text-2xl pointer-events-none">→</div>
+                    </button>
                   </div>
                   
                   <div className="mt-2 text-xs text-gray-400 text-center">
-                    <p>{platform.isPWA ? 'Tap buttons to move' : 'Use arrow keys or tap buttons to move'}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Space = Pause • R = Restart</p>
-                    {platform.isPWA && (
-                      <p className="text-xs text-green-400 mt-0.5">Running as installed PWA</p>
-                    )}
+                    <p className="text-xs">{platform.isPWA ? 'Tap to move' : 'Tap or use arrow keys'}</p>
                   </div>
                 </div>
               </div>
