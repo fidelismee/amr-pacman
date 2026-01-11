@@ -416,9 +416,9 @@ const BacteriaGame = () => {
           </p>
         </header>
 
-        <div className="flex flex-col lg:flex-row gap-6 md:gap-8 items-start">
+        <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-start">
           <div className="flex-1 w-full flex flex-col items-center">
-            <div className="flex justify-center items-center w-full overflow-hidden py-4" ref={boardRef}>
+            <div className="flex justify-center items-center w-full overflow-hidden py-2 md:py-4" ref={boardRef}>
               <div className="relative" style={{ width: responsiveBoardWidth, height: responsiveBoardHeight }}>
                 
                 {/* Board Container */}
@@ -515,97 +515,13 @@ const BacteriaGame = () => {
               </div>
             </div>
 
-            {/* Platform-specific controls */}
-            {showTouchControls ? (
-              <div className="mt-6 w-full max-w-md">
-                <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                  <h3 className="text-lg font-bold mb-4 text-green-300 text-center">
-                    {platform.isPWA ? 'Touch Controls' : 'Arrow Key Controls'}
-                  </h3>
-                  
-                  <div className="flex flex-col items-center">
-                    {/* Up arrow */}
-                    <div className="mb-2">
-                      <button
-                        onClick={() => nextDirectionRef.current = 'up'}
-                        className="w-20 h-20 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
-                      >
-                        <div className="text-4xl">↑</div>
-                      </button>
-                      <div className="text-center text-sm text-gray-400 mt-1">Up</div>
-                    </div>
-                    
-                    {/* Middle row: Left, Down, Right */}
-                    <div className="flex items-center gap-6">
-                      <div>
-                        <button
-                          onClick={() => nextDirectionRef.current = 'left'}
-                          className="w-20 h-20 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
-                        >
-                          <div className="text-4xl">←</div>
-                        </button>
-                        <div className="text-center text-sm text-gray-400 mt-1">Left</div>
-                      </div>
-                      
-                      <div>
-                        <button
-                          onClick={() => nextDirectionRef.current = 'down'}
-                          className="w-20 h-20 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
-                        >
-                          <div className="text-4xl">↓</div>
-                        </button>
-                        <div className="text-center text-sm text-gray-400 mt-1">Down</div>
-                      </div>
-                      
-                      <div>
-                        <button
-                          onClick={() => nextDirectionRef.current = 'right'}
-                          className="w-20 h-20 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
-                        >
-                          <div className="text-4xl">→</div>
-                        </button>
-                        <div className="text-center text-sm text-gray-400 mt-1">Right</div>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-4 text-sm text-gray-400 text-center">
-                      <p>{platform.isPWA ? 'Tap buttons to move' : 'Use arrow keys or tap buttons to move'}</p>
-                      <p className="text-xs text-gray-500 mt-1">Space = Pause • R = Restart</p>
-                      {platform.isPWA && (
-                        <p className="text-xs text-green-400 mt-1">Running as installed PWA</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="mt-6 w-full max-w-md">
-                <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                  <h3 className="text-lg font-bold mb-4 text-purple-300 text-center">Desktop Controls</h3>
-                  
-                  <div className="space-y-4">
-                    <div className="text-center">
-                      <div className="inline-flex flex-col items-center gap-2 p-4 bg-gray-900/50 rounded-lg">
-                        <div className="text-2xl">🎮</div>
-                        <div className="text-sm text-gray-300">Use <span className="font-bold text-green-300">Arrow Keys</span> to move</div>
-                        <div className="text-sm text-gray-300"><span className="font-bold text-yellow-300">Space</span> to pause/resume</div>
-                        <div className="text-sm text-gray-300"><span className="font-bold text-red-300">R</span> to restart game</div>
-                      </div>
-                    </div>
-                    
-                    <div className="text-center text-sm text-gray-400">
-                      <p>Optimized for keyboard play</p>
-                      <p className="text-xs text-gray-500 mt-1">Touch controls hidden on desktop</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* Stats Panel */}
-          <div className="lg:w-72 w-full space-y-4">
+          {/* Right Column: Stats and Controls */}
+          <div className="md:w-80 w-full space-y-4 md:space-y-6">
+            {/* Stats Panel */}
             <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+              <h3 className="text-lg font-bold mb-4 text-green-300 text-center">Game Stats</h3>
               <div className="flex justify-between mb-2">
                 <span className="text-gray-400">Score</span>
                 <span className="text-2xl font-bold text-green-400">{score}</span>
@@ -631,11 +547,94 @@ const BacteriaGame = () => {
               </div>
             </div>
 
+            {/* Platform-specific controls */}
+            {showTouchControls ? (
+              <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                <h3 className="text-lg font-bold mb-4 text-green-300 text-center">
+                  {platform.isPWA ? 'Touch Controls' : 'Arrow Key Controls'}
+                </h3>
+                
+                <div className="flex flex-col items-center">
+                  {/* Up arrow */}
+                  <div className="mb-2">
+                    <button
+                      onClick={() => nextDirectionRef.current = 'up'}
+                      className="w-16 h-16 md:w-20 md:h-20 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
+                    >
+                      <div className="text-3xl md:text-4xl">↑</div>
+                    </button>
+                    <div className="text-center text-sm text-gray-400 mt-1">Up</div>
+                  </div>
+                  
+                  {/* Middle row: Left, Down, Right */}
+                  <div className="flex items-center gap-4 md:gap-6">
+                    <div>
+                      <button
+                        onClick={() => nextDirectionRef.current = 'left'}
+                        className="w-16 h-16 md:w-20 md:h-20 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
+                      >
+                        <div className="text-3xl md:text-4xl">←</div>
+                      </button>
+                      <div className="text-center text-sm text-gray-400 mt-1">Left</div>
+                    </div>
+                    
+                    <div>
+                      <button
+                        onClick={() => nextDirectionRef.current = 'down'}
+                        className="w-16 h-16 md:w-20 md:h-20 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
+                      >
+                        <div className="text-3xl md:text-4xl">↓</div>
+                      </button>
+                      <div className="text-center text-sm text-gray-400 mt-1">Down</div>
+                    </div>
+                    
+                    <div>
+                      <button
+                        onClick={() => nextDirectionRef.current = 'right'}
+                        className="w-16 h-16 md:w-20 md:h-20 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 active:bg-gray-500 transition-colors"
+                      >
+                        <div className="text-3xl md:text-4xl">→</div>
+                      </button>
+                      <div className="text-center text-sm text-gray-400 mt-1">Right</div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-4 text-sm text-gray-400 text-center">
+                    <p>{platform.isPWA ? 'Tap buttons to move' : 'Use arrow keys or tap buttons to move'}</p>
+                    <p className="text-xs text-gray-500 mt-1">Space = Pause • R = Restart</p>
+                    {platform.isPWA && (
+                      <p className="text-xs text-green-400 mt-1">Running as installed PWA</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                <h3 className="text-lg font-bold mb-4 text-purple-300 text-center">Desktop Controls</h3>
+                
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <div className="inline-flex flex-col items-center gap-2 p-4 bg-gray-900/50 rounded-lg">
+                      <div className="text-2xl">🎮</div>
+                      <div className="text-sm text-gray-300">Use <span className="font-bold text-green-300">Arrow Keys</span> to move</div>
+                      <div className="text-sm text-gray-300"><span className="font-bold text-yellow-300">Space</span> to pause/resume</div>
+                      <div className="text-sm text-gray-300"><span className="font-bold text-red-300">R</span> to restart game</div>
+                    </div>
+                  </div>
+                  
+                  <div className="text-center text-sm text-gray-400">
+                    <p>Optimized for keyboard play</p>
+                    <p className="text-xs text-gray-500 mt-1">Touch controls hidden on desktop</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <button onClick={initializeGame} className="w-full py-3 bg-gray-700 hover:bg-gray-600 rounded font-bold">Restart (R)</button>
           </div>
         </div>
 
-        <footer className="mt-8 text-center text-gray-500 text-sm">
+        <footer className="mt-6 text-center text-gray-500 text-sm">
           <p>Move the bacteria with {showTouchControls ? 'on-screen controls or ' : ''}arrow keys. Eat all green dots to win!</p>
           <p className="mt-2">Avoid red antibiotics unless you have a blue booster active.</p>
           {platform.isPWA && (
