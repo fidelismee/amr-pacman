@@ -58,7 +58,8 @@ const BacteriaGame = () => {
   const [poweredUp, setPoweredUp] = useState(false);
   const [powerUpTimer, setPowerUpTimer] = useState(0);
   const [gameMessage, setGameMessage] = useState<string>('');
-  const [hasFocus, setHasFocus] = useState(false);
+  // Auto-focus for PWA/mobile, manual focus for desktop
+  const [hasFocus, setHasFocus] = useState(platform.isPWA || platform.isMobile);
   const [isRunning, setIsRunning] = useState(true);
 
   const antibioticDirectionsRef = useRef<Direction[]>([...INITIAL_ENEMY_DIRECTIONS]);
@@ -494,10 +495,11 @@ const BacteriaGame = () => {
                   </div>
 
                   {/* Overlays */}
-                  {!hasFocus && (
+                  {/* Only show "Click to Focus" for desktop browsers (not PWA/mobile) */}
+                  {!hasFocus && !platform.isPWA && !platform.isMobile && (
                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-30">
                       <div className="text-center p-3 bg-gray-900 rounded border border-green-500">
-                        <p className="text-green-300 text-sm">Click to Focus</p>
+                        <p className="text-green-300 text-sm">Click to Focus (for keyboard controls)</p>
                       </div>
                     </div>
                   )}
