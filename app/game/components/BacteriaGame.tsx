@@ -3,8 +3,23 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { usePlatform, useShouldShowTouchControls, useShouldShowKeyboardInstructions } from '../../contexts/PlatformContext';
 import TouchController from '../../components/TouchController';
+import { Bacteria } from '../../../src/entities/Bacteria';
+import { BacteriaRenderer } from '../../../src/components/BacteriaRenderer';
+import { Antibiotic } from '../../../src/entities/Antibiotic';
+import { AntibioticRenderer } from '../../../src/components/AntibioticRenderer';
+
+import { 
+  LEVEL_1, 
+  GRID_WIDTH, 
+  GRID_HEIGHT, 
+  ANTIBIOTIC_START as BACTERIA_START_POS,
+  BACTERIA_STARTS as ANTIBIOTIC_STARTS,
+  Level, 
+  CellType 
+} from '../levels';
 
 // Types
 type Direction = 'up' | 'down' | 'left' | 'right';
@@ -12,35 +27,10 @@ interface Position {
   x: number;
   y: number;
 }
-type CellType = 0 | 1 | 2 | 3;
-type Level = CellType[][];
 
 // Constants
 const CELL_SIZE = 24;
 const POWER_UP_DURATION = 5000;
-const GRID_WIDTH = 15;
-const GRID_HEIGHT = 15;
-
-const LEVEL_1: Level = [
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1],
-  [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
-  [1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1],
-  [1, 0, 1, 0, 1, 3, 0, 0, 0, 3, 1, 0, 1, 0, 1],
-  [1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1],
-  [1, 0, 1, 1, 0, 1, 1, 2, 1, 1, 0, 1, 1, 0, 1],
-  [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1],
-  [1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1],
-  [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-];
-
-// Player starts in the middle
-const BACTERIA_START_POS = { x: 7, y: 7 };
 const INITIAL_ENEMY_DIRECTIONS: Direction[] = ['right', 'left', 'up', 'down'];
 
 const BacteriaGame = () => {
@@ -52,6 +42,10 @@ const BacteriaGame = () => {
   const [level, setLevel] = useState<Level>(LEVEL_1);
   const [bacteriaPosition, setBacteriaPosition] = useState<Position>(BACTERIA_START_POS);
   const [antibioticPositions, setAntibioticPositions] = useState<Position[]>([]);
+  const [bacteriaInstance, setBacteriaInstance] = useState<Bacteria>(
+    new Bacteria(BACTERIA_START_POS.x, BACTERIA_START_POS.y)
+  );
+  const [antibioticInstances, setAntibioticInstances] = useState<Antibiotic[]>([]);
   
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
@@ -138,12 +132,12 @@ const BacteriaGame = () => {
 
   // --- NEW: Quadrant-Based Spawning Logic ---
   const generateScatteredPositions = (): Position[] => {
-    // Define the 4 quadrants (excluding the very center safe zone)
+    // Define the 4 quadrants for 27x19 grid (excluding the very center safe zone)
     const quadrants = [
-      { minX: 1, maxX: 6, minY: 1, maxY: 6 },     // Top-Left
-      { minX: 8, maxX: 13, minY: 1, maxY: 6 },    // Top-Right
-      { minX: 1, maxX: 6, minY: 8, maxY: 13 },    // Bottom-Left
-      { minX: 8, maxX: 13, minY: 8, maxY: 13 },   // Bottom-Right
+      { minX: 1, maxX: 8, minY: 1, maxY: 4 },     // Top-Left
+      { minX: 18, maxX: 25, minY: 1, maxY: 4 },   // Top-Right
+      { minX: 1, maxX: 8, minY: 14, maxY: 17 },   // Bottom-Left
+      { minX: 18, maxX: 25, minY: 14, maxY: 17 }, // Bottom-Right
     ];
 
     const selectedPositions: Position[] = [];
@@ -177,6 +171,71 @@ const BacteriaGame = () => {
     if (x < 0 || x >= level[0].length || y < 0 || y >= level.length) return false;
     return level[y]?.[x] !== 1;
   };
+
+  // Update bacteria instance when position or direction changes
+  useEffect(() => {
+    if (bacteriaInstance) {
+      bacteriaInstance.setPosition(bacteriaPosition.x, bacteriaPosition.y);
+      bacteriaInstance.setDirection(currentDirectionRef.current);
+    }
+  }, [bacteriaPosition, bacteriaInstance, currentDirectionRef.current]);
+
+  // Update bacteria animation
+  useEffect(() => {
+    if (!isRunning || !gameActive || !bacteriaInstance) return;
+
+    const animationInterval = setInterval(() => {
+      if (bacteriaInstance) {
+        bacteriaInstance.update(16); // ~60fps
+      }
+    }, 16);
+
+    return () => clearInterval(animationInterval);
+  }, [isRunning, gameActive, bacteriaInstance]);
+
+  // Initialize antibiotic instances when positions change
+  useEffect(() => {
+    if (antibioticPositions.length === 0) {
+      setAntibioticInstances([]);
+      return;
+    }
+
+    // Create or update antibiotic instances
+    const newInstances: Antibiotic[] = [];
+    antibioticPositions.forEach((pos, index) => {
+      if (index < antibioticInstances.length) {
+        // Update existing instance
+        const instance = antibioticInstances[index];
+        instance.setPosition(pos.x, pos.y);
+        instance.setDirection(antibioticDirectionsRef.current[index]);
+        instance.setMoving(true); // Antibiotics are always moving
+        newInstances.push(instance);
+      } else {
+        // Create new instance
+        const instance = new Antibiotic(pos.x, pos.y);
+        instance.setDirection(antibioticDirectionsRef.current[index]);
+        instance.setMoving(true);
+        newInstances.push(instance);
+      }
+    });
+
+    if (newInstances.length !== antibioticInstances.length) {
+      setAntibioticInstances(newInstances);
+    }
+  }, [antibioticPositions, antibioticDirectionsRef.current]);
+
+  // Update antibiotic animation
+  useEffect(() => {
+    if (!isRunning || !gameActive || antibioticInstances.length === 0) return;
+
+    const animationInterval = setInterval(() => {
+      antibioticInstances.forEach(instance => {
+        instance.update(16); // ~60fps
+      });
+    }, 16);
+
+    return () => clearInterval(animationInterval);
+  }, [isRunning, gameActive, antibioticInstances]);
 
   const moveBacteria = () => {
     const currentDirection = currentDirectionRef.current;
@@ -216,7 +275,13 @@ const BacteriaGame = () => {
       }
     }
 
-    if (newPos.x !== bacteriaPosition.x || newPos.y !== bacteriaPosition.y) {
+    // Update bacteria moving state
+    const isMoving = newPos.x !== bacteriaPosition.x || newPos.y !== bacteriaPosition.y;
+    if (bacteriaInstance) {
+      bacteriaInstance.setMoving(isMoving);
+    }
+
+    if (isMoving) {
       setBacteriaPosition(newPos);
       const cellType = level[newPos.y]?.[newPos.x];
       
@@ -318,10 +383,41 @@ const BacteriaGame = () => {
       // Collision hit box
       if (antibiotic.x === bacteriaPosition.x && antibiotic.y === bacteriaPosition.y) {
         if (poweredUp) {
-          // Eat Enemy - Send it back to its spawn quadrant? Or just remove temporarily?
-          // For Pacman style, usually they respawn. Let's filter out to "kill" them.
+          // Eat Enemy - Remove temporarily and respawn after delay
           setAntibioticPositions(prev => prev.filter(a => a !== antibiotic));
           setScore(prev => prev + 100);
+          
+          // Respawn the antibiotic after 3 seconds
+          setTimeout(() => {
+            setAntibioticPositions(prev => {
+              // Generate a new position in a random quadrant
+              const quadrants = [
+                { minX: 1, maxX: 8, minY: 1, maxY: 4 },     // Top-Left
+                { minX: 18, maxX: 25, minY: 1, maxY: 4 },   // Top-Right
+                { minX: 1, maxX: 8, minY: 14, maxY: 17 },   // Bottom-Left
+                { minX: 18, maxX: 25, minY: 14, maxY: 17 }, // Bottom-Right
+              ];
+              
+              const randomQuadrant = quadrants[Math.floor(Math.random() * quadrants.length)];
+              const validPositions: Position[] = [];
+              
+              // Find all valid empty cells in this quadrant
+              for (let y = randomQuadrant.minY; y <= randomQuadrant.maxY; y++) {
+                for (let x = randomQuadrant.minX; x <= randomQuadrant.maxX; x++) {
+                  if (LEVEL_1[y]?.[x] !== 1) {
+                    validPositions.push({ x, y });
+                  }
+                }
+              }
+              
+              if (validPositions.length > 0) {
+                const randomPos = validPositions[Math.floor(Math.random() * validPositions.length)];
+                return [...prev, randomPos];
+              }
+              
+              return prev; // No valid position found, don't respawn
+            });
+          }, 3000); // 3 second respawn delay
         } else {
           // Die
           setLives(prev => {
@@ -387,8 +483,13 @@ const BacteriaGame = () => {
       moveBacteria();
       moveAntibiotics();
       if (poweredUp) {
-        setPowerUpTimer(prev => (prev <= 200 ? 0 : prev - 200));
-        if (powerUpTimer <= 200) setPoweredUp(false);
+        setPowerUpTimer(prev => {
+          const newTimer = prev <= 200 ? 0 : prev - 200;
+          if (newTimer === 0) {
+            setPoweredUp(false);
+          }
+          return newTimer;
+        });
       }
       checkCollisions();
     }, 200);
@@ -424,6 +525,12 @@ const BacteriaGame = () => {
   const antibioticSize = responsiveCellSize * 0.7;
   const bacteriaOffset = (responsiveCellSize - bacteriaSize) / 2;
   const antibioticOffset = (responsiveCellSize - antibioticSize) / 2;
+
+  // Map lives count to image filename
+  const getLivesImagePath = (livesCount: number): string => {
+    const clampedLives = Math.max(0, Math.min(5, livesCount));
+    return `/assets/lives/live-${clampedLives}.png`;
+  };
 
   return (
     <div className="min-h-dvh max-h-dvh bg-gradient-to-br from-slate-900 to-gray-950 text-white touch-none overflow-hidden flex flex-col game-landscape-optimized">
@@ -505,7 +612,18 @@ const BacteriaGame = () => {
                           if (cell === 0) {
                             cellContent = <div className="w-1.5 h-1.5 rounded-full bg-green-500/80 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />;
                           } else if (cell === 3) {
-                            cellContent = <div className="w-3 h-3 rounded-full bg-blue-400 animate-pulse shadow-[0_0_12px_rgba(96,165,250,0.8)]" />;
+                            cellContent = (
+                              <img
+                                src="/assets/resistance/resistance booster.png"
+                                alt="Resistance Booster"
+                                style={{
+                                  width: `${responsiveCellSize * 0.6}px`,
+                                  height: `${responsiveCellSize * 0.6}px`,
+                                  imageRendering: 'pixelated',
+                                  animation: 'pulse 1s infinite',
+                                }}
+                              />
+                            );
                           }
                         }
                         return <div key={`${x}-${y}`} className={cellClass} style={{ width: responsiveCellSize, height: responsiveCellSize }}>{cellContent}</div>;
@@ -517,36 +635,48 @@ const BacteriaGame = () => {
                   <div className="absolute inset-0 pointer-events-none z-10">
                     
                     {/* Player (Bacteria) */}
-                    <div
-                      className={`absolute rounded-lg transition-transform duration-150 ease-linear ${getBacteriaRotation()} ${
-                        poweredUp 
-                          ? 'bg-gradient-to-br from-green-300 to-emerald-400 shadow-lg shadow-green-400/50 animate-pulse' 
-                          : 'bg-gradient-to-br from-green-500 to-emerald-700 shadow-lg'
-                      }`}
-                      style={{
-                        width: `${bacteriaSize}px`, height: `${bacteriaSize}px`,
-                        transform: `translate(${bacteriaPosition.x * responsiveCellSize + bacteriaOffset}px, ${bacteriaPosition.y * responsiveCellSize + bacteriaOffset}px)`,
-                      }}
-                    >
-                      <div className="absolute w-2 h-2 bg-white/90 rounded-full left-2 top-2"></div>
-                      <div className="absolute w-2 h-2 bg-white/90 rounded-full right-2 top-2"></div>
-                    </div>
+                    {bacteriaInstance && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          left: `${bacteriaPosition.x * responsiveCellSize}px`,
+                          top: `${bacteriaPosition.y * responsiveCellSize}px`,
+                          width: `${responsiveCellSize}px`,
+                          height: `${responsiveCellSize}px`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <BacteriaRenderer
+                          bacteria={bacteriaInstance}
+                          scale={responsiveCellSize / 32}
+                        />
+                      </div>
+                    )}
 
                     {/* Enemies (Antibiotics) */}
-                    {antibioticPositions.map((pos, index) => (
+                    {antibioticInstances.map((antibiotic, index) => (
                       <div
                         key={`enemy-${index}`}
-                        className={`absolute rounded-full transition-transform duration-150 ease-linear ${
-                          poweredUp ? 'opacity-50 grayscale' : `bg-gradient-to-r ${getAntibioticColor(index)}`
-                        }`}
                         style={{
-                          width: `${antibioticSize}px`, height: `${antibioticSize}px`,
-                          transform: `translate(${pos.x * responsiveCellSize + antibioticOffset}px, ${pos.y * responsiveCellSize + antibioticOffset}px)`,
+                          position: 'absolute',
+                          left: `${antibioticPositions[index]?.x * responsiveCellSize}px`,
+                          top: `${antibioticPositions[index]?.y * responsiveCellSize}px`,
+                          width: `${responsiveCellSize}px`,
+                          height: `${responsiveCellSize}px`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          opacity: poweredUp ? 0.5 : 1,
+                          filter: poweredUp ? 'grayscale(100%)' : 'none',
                           zIndex: 20
                         }}
                       >
-                         <div className="absolute w-1 h-3 bg-white/60 rounded-full left-2 top-1/2 transform -translate-y-1/2"></div>
-                         <div className="absolute w-1 h-3 bg-white/60 rounded-full right-2 top-1/2 transform -translate-y-1/2"></div>
+                        <AntibioticRenderer
+                          antibiotic={antibiotic}
+                          scale={responsiveCellSize / 32}
+                        />
                       </div>
                     ))}
                   </div>
@@ -583,12 +713,24 @@ const BacteriaGame = () => {
                 <span className="text-gray-400 text-xs">Score</span>
                 <span className="text-lg font-bold text-green-400">{score}</span>
               </div>
-              <div className="flex justify-between mb-0.5">
+              <div className="flex flex-col gap-1 mb-0.5">
                 <span className="text-gray-400 text-xs">Lives</span>
-                <div className="flex gap-0.5">
-                  {[...Array(3)].map((_, i) => (
-                    <div key={i} className={`w-2.5 h-2.5 rounded-full ${i < lives ? 'bg-green-500' : 'bg-gray-700'}`} />
-                  ))}
+                <div className="relative w-full h-auto bg-gray-900/30 rounded p-1 border border-gray-700/50 overflow-hidden flex items-center justify-center">
+                  <Image
+                    src={getLivesImagePath(lives)}
+                    alt={`Bacteria lives: ${lives}`}
+                    width={300}
+                    height={90}
+                    priority
+                    className="w-full h-auto object-contain"
+                    style={{
+                      maxWidth: '100%',
+                      height: 'auto',
+                    }}
+                  />
+                </div>
+                <div className="text-[10px] text-gray-500 text-center">
+                  {lives === 0 ? 'Game Over' : `${lives} remaining`}
                 </div>
               </div>
               <div className="flex justify-between mb-0.5">

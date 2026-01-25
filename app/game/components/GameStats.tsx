@@ -1,6 +1,8 @@
 // app/game/components/GameStats.tsx
 "use client";
 
+import Image from 'next/image';
+
 interface GameStatsProps {
   score: number;
   lives: number;
@@ -10,6 +12,12 @@ interface GameStatsProps {
   powerUpTimer: number;
   powerUpDuration: number;
 }
+
+// Map lives count to image filename
+const getLivesImagePath = (livesCount: number): string => {
+  const clampedLives = Math.max(0, Math.min(5, livesCount));
+  return `/assets/lives/live-${clampedLives}.png`;
+};
 
 const GameStats = ({
   score,
@@ -30,19 +38,24 @@ const GameStats = ({
           <span className="text-2xl md:text-3xl font-bold text-emerald-400">{score}</span>
         </div>
         
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-1">
           <span className="text-gray-300 text-sm md:text-base">Lives:</span>
-          <div className="flex gap-1 md:gap-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div
-                key={i}
-                className={`w-5 h-5 md:w-6 md:h-6 rounded-full ${
-                  i < lives 
-                    ? 'bg-gradient-to-r from-green-500 to-emerald-500' 
-                    : 'bg-gray-700'
-                }`}
-              />
-            ))}
+          <div className="relative w-full h-auto bg-gray-900/30 rounded p-2 border border-gray-700/50 overflow-hidden flex items-center justify-center">
+            <Image
+              src={getLivesImagePath(lives)}
+              alt={`Bacteria lives: ${lives}`}
+              width={300}
+              height={90}
+              priority
+              className="w-full h-auto object-contain"
+              style={{
+                maxWidth: '100%',
+                height: 'auto',
+              }}
+            />
+          </div>
+          <div className="text-xs text-gray-500 text-center">
+            {lives === 0 ? 'Game Over' : `${lives} remaining`}
           </div>
         </div>
         
