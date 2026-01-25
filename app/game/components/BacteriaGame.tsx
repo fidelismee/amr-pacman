@@ -327,51 +327,107 @@ const BacteriaGame = () => {
         // Check forward move
         let nextPos = { ...antibiotic };
         let moved = false;
+        let chosenDir = currentDir;
 
-        // 1. Get valid moves
+        // Get all valid moves from current position
         const validMoves = directions.filter(d => {
           const tx = antibiotic.x + d.x;
           const ty = antibiotic.y + d.y;
-          // Prevent moving into walls OR directly reversing
-          return canMoveTo(tx, ty) && d.dir !== getOpposite(currentDir);
+          return canMoveTo(tx, ty);
         });
 
-        // 2. Decide move
         if (validMoves.length > 0) {
-          // If at intersection (more than 1 choice), maybe change direction?
-          // Otherwise keep going straight if possible.
-          const straightMove = validMoves.find(m => m.dir === currentDir);
+          // Add randomness to movement - 40% chance to change direction even if current direction is valid
+          const currentDirVec = directions.find(d => d.dir === currentDir);
+          const canContinueCurrent = currentDirVec && canMoveTo(antibiotic.x + currentDirVec.x, antibiotic.y + currentDirVec.y);
           
-          let chosen;
-          // 30% chance to turn at intersection, otherwise go straight
-          if (validMoves.length > 1 && Math.random() < 0.3) {
-             chosen = validMoves[Math.floor(Math.random() * validMoves.length)];
+          if (canContinueCurrent && Math.random() < 0.6) {
+            // 60% chance to continue in current direction
+            nextPos = { x: antibiotic.x + currentDirVec.x, y: antibiotic.y + currentDirVec.y };
+            moved = true;
+            chosenDir = currentDir;
           } else {
-             chosen = straightMove || validMoves[0];
-          }
-
-          antibioticDirectionsRef.current[index] = chosen.dir;
-          nextPos = { x: antibiotic.x + chosen.x, y: antibiotic.y + chosen.y };
-          moved = true;
-        } else {
-          // Dead end? Reverse.
-          const reverseDir = getOpposite(currentDir);
-          const revVec = directions.find(d => d.dir === reverseDir);
-          if (revVec && canMoveTo(antibiotic.x + revVec.x, antibiotic.y + revVec.y)) {
-            antibioticDirectionsRef.current[index] = reverseDir;
-            nextPos = { x: antibiotic.x + revVec.x, y: antibiotic.y + revVec.y };
+            // 40% chance to choose random direction, or if can't continue current
+            // Weight the random choice: prefer non-reverse directions but allow all
+            const oppositeDir = getOpposite(currentDir);
+            const nonReverseMoves = validMoves.filter(d => d.dir !== oppositeDir);
+            
+            // If there are non-reverse options, use them 80% of the time
+            let movesToChooseFrom = validMoves;
+            if (nonReverseMoves.length > 0 && Math.random() < 0.8) {
+              movesToChooseFrom = nonReverseMoves;
+            }
+            
+            // Shuffle the moves for more randomness
+            const shuffledMoves = [...movesToChooseFrom].sort(() => Math.random() - 0.5);
+            const chosen = shuffledMoves[0];
+            
+            chosenDir = chosen.dir;
+            nextPos = { x: antibiotic.x + chosen.x, y: antibiotic.y + chosen.y };
             moved = true;
           }
         }
+        // If no valid moves at all, stay in place (shouldn't happen in valid maze)
         
-        // 3. Simple collision avoidance with other enemies (don't stack)
+        // Update direction
+        antibioticDirectionsRef.current[index] = chosenDir;
+        
+        // 2. Check if target position is occupied by another antibiotic
         const isOccupied = newPositions.some(p => p.x === nextPos.x && p.y === nextPos.y) || 
                            prev.some((p, i) => i > index && p.x === nextPos.x && p.y === nextPos.y);
 
         if (moved && !isOccupied) {
-           newPositions.push(nextPos);
+          newPositions.push(nextPos);
+        } else if (isOccupied) {
+          // If blocked by another antibiotic, change direction immediately
+          // Try 180° turn (opposite direction) first
+          const oppositeDir = getOpposite(chosenDir);
+          const oppositeVec = directions.find(d => d.dir === oppositeDir);
+          
+          if (oppositeVec && canMoveTo(antibiotic.x + oppositeVec.x, antibiotic.y + oppositeVec.y)) {
+            // Can move in opposite direction
+            antibioticDirectionsRef.current[index] = oppositeDir;
+            nextPos = { x: antibiotic.x + oppositeVec.x, y: antibiotic.y + oppositeVec.y };
+            newPositions.push(nextPos);
+          } else {
+            // Can't move opposite, try 90° turns (perpendicular directions)
+            const perpendicularDirs = directions.filter(d => 
+              d.dir !== chosenDir && d.dir !== oppositeDir
+            );
+            
+            // Shuffle perpendicular directions for random choice
+            const shuffledPerpendicular = [...perpendicularDirs].sort(() => Math.random() - 0.5);
+            
+            let foundAlternative = false;
+            for (const dirVec of shuffledPerpendicular) {
+              if (canMoveTo(antibiotic.x + dirVec.x, antibiotic.y + dirVec.y)) {
+                antibioticDirectionsRef.current[index] = dirVec.dir;
+                nextPos = { x: antibiotic.x + dirVec.x, y: antibiotic.y + dirVec.y };
+                // Check if this alternative position is also occupied
+                const altOccupied = newPositions.some(p => p.x === nextPos.x && p.y === nextPos.y) || 
+                                   prev.some((p, i) => i > index && p.x === nextPos.x && p.y === nextPos.y);
+                if (!altOccupied) {
+                  newPositions.push(nextPos);
+                  foundAlternative = true;
+                  break;
+                }
+              }
+            }
+            
+            // If no alternative found, stay in place but change direction anyway
+            // This will help next iteration
+            if (!foundAlternative) {
+              newPositions.push(antibiotic);
+              // Still change direction to a random valid direction if possible
+              const validDirs = directions.filter(d => canMoveTo(antibiotic.x + d.x, antibiotic.y + d.y));
+              if (validDirs.length > 0) {
+                const randomDir = validDirs[Math.floor(Math.random() * validDirs.length)];
+                antibioticDirectionsRef.current[index] = randomDir.dir;
+              }
+            }
+          }
         } else {
-           newPositions.push(antibiotic); // Stay still if blocked
+          newPositions.push(antibiotic); // Stay still if can't move
         }
       });
       return newPositions;
@@ -379,12 +435,16 @@ const BacteriaGame = () => {
   };
 
   const checkCollisions = () => {
-    antibioticPositions.forEach(antibiotic => {
+    // Create a copy of antibioticPositions to avoid mutation during iteration
+    const currentAntibiotics = [...antibioticPositions];
+    
+    currentAntibiotics.forEach((antibiotic, index) => {
       // Collision hit box
       if (antibiotic.x === bacteriaPosition.x && antibiotic.y === bacteriaPosition.y) {
         if (poweredUp) {
           // Eat Enemy - Remove temporarily and respawn after delay
-          setAntibioticPositions(prev => prev.filter(a => a !== antibiotic));
+          setAntibioticPositions(prev => prev.filter((a, i) => i !== index));
+          setAntibioticInstances(prev => prev.filter((_, i) => i !== index));
           setScore(prev => prev + 100);
           
           // Respawn the antibiotic after 3 seconds
