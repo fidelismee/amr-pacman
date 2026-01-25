@@ -5,6 +5,7 @@ An antibiotic resistance themed Pacman game built as a Progressive Web App (PWA)
 ## Features
 
 - 🎮 **Gameplay**: Control bacteria to consume nutrients while avoiding antibiotics
+- 🤖 **Enhanced AI**: Smart antibiotic movement with randomness and collision avoidance
 - 📱 **Mobile Optimized**: Responsive design that works on all devices
 - 🎯 **Touch Controls**: Built-in arrow controller for mobile devices
 - ⚡ **PWA Ready**: Installable as a native app on mobile devices
@@ -12,6 +13,13 @@ An antibiotic resistance themed Pacman game built as a Progressive Web App (PWA)
 - 🔄 **Game Loop**: Smooth 200ms game loop with collision detection
 
 ## Recent Improvements
+
+### Enhanced Game AI (Latest)
+- **Smart Antibiotic Movement**: 40% chance to change direction even when current path is valid
+- **Collision Avoidance**: Prevents antibiotics from stacking on same cell
+- **Intelligent Direction Changes**: When blocked, tries opposite direction first, then perpendicular directions
+- **Non-reverse Preference**: 80% chance to avoid immediate 180-degree turns
+- **Quadrant-based Spawning**: Antibiotics spawn in different map quadrants for balanced gameplay
 
 ### Mobile & PWA Enhancements
 - **Responsive Design**: Complete mobile-first redesign with proper breakpoints
