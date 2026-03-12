@@ -6,7 +6,6 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { usePlatform, useShouldShowTouchControls, useShouldShowKeyboardInstructions } from '../../contexts/PlatformContext';
 import TouchController from '../../components/TouchController';
-import { useGameAudio } from '../hooks/useGameAudio';
 import { Bacteria } from '../../../src/entities/Bacteria';
 import { BacteriaRenderer } from '../../../src/components/BacteriaRenderer';
 import { Antibiotic } from '../../../src/entities/Antibiotic';
@@ -63,16 +62,6 @@ const BacteriaGame = () => {
   const antibioticDirectionsRef = useRef<Direction[]>([...INITIAL_ENEMY_DIRECTIONS]);
   const nextDirectionRef = useRef<Direction | null>(null);
   const currentDirectionRef = useRef<Direction>('right');
-  const {
-    ensureAudioUnlocked,
-    playEffect,
-    playMovementEffect,
-    stopAllLoops,
-  } = useGameAudio({
-    gameActive,
-    hasFocus,
-    isRunning,
-  });
 
   const boardPixelWidth = GRID_WIDTH * CELL_SIZE;
   const boardPixelHeight = GRID_HEIGHT * CELL_SIZE;
@@ -293,7 +282,6 @@ const BacteriaGame = () => {
     }
 
     if (isMoving) {
-      playMovementEffect();
       setBacteriaPosition(newPos);
       const cellType = level[newPos.y]?.[newPos.x];
       
@@ -304,8 +292,6 @@ const BacteriaGame = () => {
         setLevel(newLevel);
         setScore(prev => prev + 10);
         if (!newLevel.flat().includes(0)) {
-          stopAllLoops();
-          playEffect('function');
           setGameActive(false);
           setGameMessage('🎉 Infection Spread! Bacteria Wins!');
         }
@@ -318,7 +304,6 @@ const BacteriaGame = () => {
         setPoweredUp(true);
         setPowerUpTimer(POWER_UP_DURATION);
         setScore(prev => prev + 50);
-        playEffect('function');
       }
     }
   };
@@ -461,7 +446,6 @@ const BacteriaGame = () => {
           setAntibioticPositions(prev => prev.filter((a, i) => i !== index));
           setAntibioticInstances(prev => prev.filter((_, i) => i !== index));
           setScore(prev => prev + 100);
-          playMovementEffect();
           
           // Respawn the antibiotic after 3 seconds
           setTimeout(() => {
@@ -496,11 +480,9 @@ const BacteriaGame = () => {
           }, 3000); // 3 second respawn delay
         } else {
           // Die
-          playEffect('function');
           setLives(prev => {
             const newLives = prev - 1;
             if (newLives <= 0) {
-              stopAllLoops();
               setGameActive(false);
               setGameMessage('💀 Sterilized! Game Over');
             }
@@ -527,35 +509,7 @@ const BacteriaGame = () => {
     setPoweredUp(false);
     setPowerUpTimer(0);
     setGameMessage('');
-    setIsRunning(true);
   }, []);
-
-  const handleBoardFocus = useCallback(() => {
-    if (!hasFocus) {
-      ensureAudioUnlocked();
-    }
-    setHasFocus(true);
-  }, [ensureAudioUnlocked, hasFocus]);
-
-  const handleDirectionChange = useCallback((direction: Direction) => {
-    ensureAudioUnlocked();
-    if (!hasFocus) {
-      setHasFocus(true);
-    }
-    nextDirectionRef.current = direction;
-  }, [ensureAudioUnlocked, hasFocus]);
-
-  const handlePauseToggle = useCallback(() => {
-    ensureAudioUnlocked();
-    playEffect('function');
-    setIsRunning(prev => !prev);
-  }, [ensureAudioUnlocked, playEffect]);
-
-  const handleRestart = useCallback(() => {
-    ensureAudioUnlocked();
-    initializeGame();
-    setHasFocus(true);
-  }, [ensureAudioUnlocked, initializeGame]);
 
   // Initial Load
   useEffect(() => {
@@ -565,23 +519,21 @@ const BacteriaGame = () => {
   // Controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const normalizedKey = e.code === 'Space' ? ' ' : e.key;
-
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(normalizedKey)) e.preventDefault();
-      if (!isRunning && ![' ', 'r', 'R'].includes(normalizedKey)) return;
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
+      if (!isRunning && e.key !== ' ') return;
       
-      switch (normalizedKey) {
-        case 'ArrowUp': handleDirectionChange('up'); break;
-        case 'ArrowDown': handleDirectionChange('down'); break;
-        case 'ArrowLeft': handleDirectionChange('left'); break;
-        case 'ArrowRight': handleDirectionChange('right'); break;
-        case ' ': handlePauseToggle(); break;
-        case 'r': case 'R': handleRestart(); break;
+      switch (e.key) {
+        case 'ArrowUp': nextDirectionRef.current = 'up'; break;
+        case 'ArrowDown': nextDirectionRef.current = 'down'; break;
+        case 'ArrowLeft': nextDirectionRef.current = 'left'; break;
+        case 'ArrowRight': nextDirectionRef.current = 'right'; break;
+        case ' ': setIsRunning(prev => !prev); break;
+        case 'r': case 'R': initializeGame(); break;
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleDirectionChange, handlePauseToggle, handleRestart, isRunning]);
+  }, [isRunning, initializeGame]);
 
   // Game Loop
   useEffect(() => {
@@ -698,7 +650,7 @@ const BacteriaGame = () => {
                   className={`relative cursor-pointer w-full h-full outline-none rounded-lg overflow-hidden shadow-2xl border-4 border-gray-700 ${
                     hasFocus ? 'ring-2 ring-green-500' : ''
                   }`}
-                  onClick={handleBoardFocus}
+                  onClick={() => setHasFocus(true)}
                   onBlur={() => setHasFocus(false)}
                   tabIndex={0}
                 >
@@ -802,7 +754,7 @@ const BacteriaGame = () => {
                     <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-40">
                       <div className="text-center">
                         <h2 className="text-2xl font-bold mb-4 text-white">{gameMessage}</h2>
-                        <button onClick={handleRestart} className="px-6 py-2 bg-green-600 rounded font-bold">Try Again</button>
+                        <button onClick={initializeGame} className="px-6 py-2 bg-green-600 rounded font-bold">Try Again</button>
                       </div>
                     </div>
                   )}
@@ -862,9 +814,11 @@ const BacteriaGame = () => {
                 </h3>
                 
                 <TouchController
-                  onDirectionChange={handleDirectionChange}
-                  onPauseToggle={handlePauseToggle}
-                  onRestart={handleRestart}
+                  onDirectionChange={(direction) => {
+                    nextDirectionRef.current = direction;
+                  }}
+                  onPauseToggle={() => setIsRunning(prev => !prev)}
+                  onRestart={initializeGame}
                   disabled={!gameActive}
                 />
                 
@@ -894,7 +848,7 @@ const BacteriaGame = () => {
               </div>
             )}
 
-            <button onClick={handleRestart} className="w-full py-1.5 bg-gray-700 hover:bg-gray-600 rounded font-bold text-xs">Restart (R)</button>
+            <button onClick={initializeGame} className="w-full py-1.5 bg-gray-700 hover:bg-gray-600 rounded font-bold text-xs">Restart (R)</button>
           </div>
         </div>
 
