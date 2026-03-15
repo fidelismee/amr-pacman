@@ -43,6 +43,7 @@ const AntibioticGame = () => {
   const poweredUpRef = useRef(false);
   const levelRef = useRef<Level>(LEVEL_1);
   const directionQueueRef = useRef<Direction | null>(null);
+  const justCollectedBoosterRef = useRef(false);
 
   // UI state
   const [hasFocus, setHasFocus] = useState(false);
@@ -98,20 +99,43 @@ const AntibioticGame = () => {
       setBacteriaPositions(newBacteriaPositions);
       bacteriaPositionsRef.current = newBacteriaPositions;
 
-      // Update power-up timer
+      // Check for crossing collision (entities passing through each other)
+      // This happens when antibiotic moves to bacteria's old position AND bacteria moves to antibiotic's old position
+      const crossingCollisionIndex = currentBacteria.findIndex((oldBacteriaPos, index) => {
+        const newBacteriaPos = newBacteriaPositions[index];
+        return (
+          newAntibioticPos.x === oldBacteriaPos.x && 
+          newAntibioticPos.y === oldBacteriaPos.y &&
+          newBacteriaPos.x === currentAntibioticPos.x && 
+          newBacteriaPos.y === currentAntibioticPos.y
+        );
+      });
+
+      // Update power-up timer and check collisions with the NEW timer value
+      let newTimerValue = powerUpTimer;
       if (isPoweredUp) {
-        setPowerUpTimer(prev => {
-          const newTimer = Math.max(0, prev - 200);
-          if (newTimer === 0) {
-            setPoweredUp(false);
-            poweredUpRef.current = false;
-          }
-          return newTimer;
-        });
+        newTimerValue = Math.max(0, powerUpTimer - 200);
+        setPowerUpTimer(newTimerValue);
+        if (newTimerValue === 0) {
+          setPoweredUp(false);
+          poweredUpRef.current = false;
+        }
       }
 
-      // Check collisions
-      checkCollisions(newAntibioticPos, newBacteriaPositions, isPoweredUp);
+      // Special case: if we just collected a booster this tick, use the full duration
+      // This handles the race condition where booster collection and collision happen in same tick
+      const isActuallyPoweredUp = newTimerValue > 0 || justCollectedBoosterRef.current;
+      
+      if (crossingCollisionIndex !== -1) {
+        // Handle crossing collision - use the updated timer value
+        handleCrossingCollision(crossingCollisionIndex, newBacteriaPositions, isActuallyPoweredUp);
+        justCollectedBoosterRef.current = false; // Reset after handling collision
+        return; // Skip the rest of the tick since we handled collision
+      }
+
+      // Check collisions with the updated timer value
+      checkCollisions(newAntibioticPos, newBacteriaPositions, isActuallyPoweredUp);
+      justCollectedBoosterRef.current = false; // Reset after checking collisions
     },
   });
 
@@ -210,6 +234,53 @@ const AntibioticGame = () => {
       poweredUpRef.current = true;
       setPowerUpTimer(POWER_UP_DURATION);
       setScore(prev => prev + 50);
+      // IMPORTANT: Update the ref immediately so the current tick uses correct value
+      // We need to track that we just collected a booster this tick
+      justCollectedBoosterRef.current = true;
+    }
+  }, []);
+
+  // Handle crossing collision (when entities pass through each other)
+  const handleCrossingCollision = useCallback((bacteriaIndex: number, bacteria: Position[], isPoweredUp: boolean) => {
+    if (isPoweredUp) {
+      // Destroy the bacteria that crossed paths
+      const newBacteria = bacteria.filter((_, index) => index !== bacteriaIndex);
+      setBacteriaPositions(newBacteria);
+      bacteriaPositionsRef.current = newBacteria;
+      setScore(prev => prev + 100);
+      
+      // Respawn the bacteria after 3 seconds
+      setTimeout(() => {
+        setBacteriaPositions(prev => {
+          const availableStarts = BACTERIA_STARTS.filter(start => 
+            !prev.some(b => b.x === start.x && b.y === start.y)
+          );
+          
+          if (availableStarts.length > 0) {
+            const randomStart = availableStarts[Math.floor(Math.random() * availableStarts.length)];
+            return [...prev, randomStart];
+          }
+          
+          return prev;
+        });
+      }, 3000);
+    } else {
+      // Lose life
+      setLives(prev => {
+        const newLives = prev - 1;
+        if (newLives <= 0) {
+          setGameState('lost');
+          gameStateRef.current = 'lost';
+          setGameMessage('💀 Bacteria Overcame Antibiotic! Game Over');
+        }
+        return newLives;
+      });
+
+      // Reset positions
+      setAntibioticPosition(ANTIBIOTIC_START);
+      setBacteriaPositions([...BACTERIA_STARTS]);
+      antibioticPositionRef.current = ANTIBIOTIC_START;
+      bacteriaPositionsRef.current = [...BACTERIA_STARTS];
     }
   }, []);
 

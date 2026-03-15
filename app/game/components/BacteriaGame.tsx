@@ -53,6 +53,12 @@ const BacteriaGame = () => {
   const [gameActive, setGameActive] = useState(true);
   const [poweredUp, setPoweredUp] = useState(false);
   const [powerUpTimer, setPowerUpTimer] = useState(0);
+  
+  // Refs for mutable state to avoid stale closure issues
+  const poweredUpRef = useRef(false);
+  const justCollectedBoosterRef = useRef(false);
+  const bacteriaPositionRef = useRef<Position>(BACTERIA_START_POS);
+  const antibioticPositionsRef = useRef<Position[]>([]);
   const [gameMessage, setGameMessage] = useState<string>('');
   // Auto-focus for PWA/mobile, manual focus for desktop
   const [hasFocus, setHasFocus] = useState(platform.isPWA || platform.isMobile);
@@ -204,6 +210,11 @@ const BacteriaGame = () => {
     return () => clearInterval(animationInterval);
   }, [isRunning, gameActive, bacteriaInstance]);
 
+  // Sync antibioticPositionsRef with state for collision detection
+  useEffect(() => {
+    antibioticPositionsRef.current = antibioticPositions;
+  }, [antibioticPositions]);
+
   // Initialize antibiotic instances when positions change
   useEffect(() => {
     if (antibioticPositions.length === 0) {
@@ -316,11 +327,16 @@ const BacteriaGame = () => {
         newLevel[newPos.y][newPos.x] = 2; // Empty
         setLevel(newLevel);
         setPoweredUp(true);
+        poweredUpRef.current = true; // IMPORTANT: Update ref immediately for same-tick collision
+        justCollectedBoosterRef.current = true; // Track that we just collected a booster
         setPowerUpTimer(POWER_UP_DURATION);
         setScore(prev => prev + 50);
         playEffect('function');
       }
     }
+    
+    // Update bacteria position ref for collision detection
+    bacteriaPositionRef.current = newPos;
   };
 
   const moveAntibiotics = () => {
@@ -445,18 +461,77 @@ const BacteriaGame = () => {
           newPositions.push(antibiotic); // Stay still if can't move
         }
       });
+      
+      // IMPORTANT: Update ref immediately for collision detection in same tick
+      antibioticPositionsRef.current = newPositions;
+      
       return newPositions;
     });
   };
 
+  // Store previous positions for crossing collision detection
+  const prevBacteriaPositionRef = useRef<Position>(BACTERIA_START_POS);
+  const prevAntibioticPositionsRef = useRef<Position[]>([]);
+
   const checkCollisions = () => {
     // Create a copy of antibioticPositions to avoid mutation during iteration
-    const currentAntibiotics = [...antibioticPositions];
+    const currentAntibiotics = [...antibioticPositionsRef.current];
+    const currentBacteriaPos = bacteriaPositionRef.current;
+    const prevBacteriaPos = prevBacteriaPositionRef.current;
+    const prevAntibiotics = prevAntibioticPositionsRef.current;
+    
+    // Use ref to get the CURRENT powered-up state (avoids stale closure)
+    // Also check justCollectedBoosterRef for same-tick booster collection
+    const isPoweredUp = poweredUpRef.current || justCollectedBoosterRef.current;
     
     currentAntibiotics.forEach((antibiotic, index) => {
-      // Collision hit box
-      if (antibiotic.x === bacteriaPosition.x && antibiotic.y === bacteriaPosition.y) {
-        if (poweredUp) {
+      const prevAntibioticPos = prevAntibiotics[index];
+      
+      // SIMPLIFIED COLLISION DETECTION:
+      // 1. Check if bacteria and antibiotic are at the same position NOW
+      const isSamePosition = antibiotic.x === currentBacteriaPos.x && antibiotic.y === currentBacteriaPos.y;
+      
+      // 2. Check if they swapped positions (crossing collision)
+      const isCrossingCollision = prevAntibioticPos && (
+        currentBacteriaPos.x === prevAntibioticPos.x && 
+        currentBacteriaPos.y === prevAntibioticPos.y &&
+        antibiotic.x === prevBacteriaPos.x && 
+        antibiotic.y === prevBacteriaPos.y
+      );
+      
+      // 3. Check if bacteria moved into antibiotic's previous position
+      const bacteriaMovedIntoAntibioticOldPos = prevAntibioticPos && (
+        currentBacteriaPos.x === prevAntibioticPos.x && currentBacteriaPos.y === prevAntibioticPos.y
+      );
+      
+      // 4. Check if antibiotic moved into bacteria's previous position
+      const antibioticMovedIntoBacteriaOldPos = prevAntibioticPos && (
+        antibiotic.x === prevBacteriaPos.x && antibiotic.y === prevBacteriaPos.y
+      );
+      
+      // 5. Check if they were adjacent and both moved (passing collision)
+      let isPassingCollision = false;
+      if (prevAntibioticPos) {
+        // Calculate Manhattan distance between previous positions
+        const prevDistance = Math.abs(prevBacteriaPos.x - prevAntibioticPos.x) + Math.abs(prevBacteriaPos.y - prevAntibioticPos.y);
+        
+        // If they were adjacent (distance = 1) and both moved
+        if (prevDistance === 1) {
+          // Check if bacteria moved away from antibiotic's old position
+          const bacteriaMovedAway = currentBacteriaPos.x !== prevBacteriaPos.x || currentBacteriaPos.y !== prevBacteriaPos.y;
+          const antibioticMovedAway = antibiotic.x !== prevAntibioticPos.x || antibiotic.y !== prevAntibioticPos.y;
+          
+          // If both moved, it's a passing collision
+          if (bacteriaMovedAway && antibioticMovedAway) {
+            isPassingCollision = true;
+          }
+        }
+      }
+      
+      // COLLISION DETECTION - ANY of these conditions means a collision occurred
+      if (isSamePosition || isCrossingCollision || bacteriaMovedIntoAntibioticOldPos || 
+          antibioticMovedIntoBacteriaOldPos || isPassingCollision) {
+        if (isPoweredUp) {
           // Eat Enemy - Remove temporarily and respawn after delay
           setAntibioticPositions(prev => prev.filter((a, i) => i !== index));
           setAntibioticInstances(prev => prev.filter((_, i) => i !== index));
@@ -519,8 +594,17 @@ const BacteriaGame = () => {
     setLevel(LEVEL_1.map(row => [...row]));
     setBacteriaPosition(BACTERIA_START_POS);
     // Use the new SCATTERED generator
-    setAntibioticPositions(generateScatteredPositions());
+    const newPositions = generateScatteredPositions();
+    setAntibioticPositions(newPositions);
     antibioticDirectionsRef.current = [...INITIAL_ENEMY_DIRECTIONS];
+    // Reset all refs to avoid stale state bugs
+    bacteriaPositionRef.current = BACTERIA_START_POS;
+    antibioticPositionsRef.current = newPositions;
+    // Initialize previous position refs for crossing collision detection
+    prevBacteriaPositionRef.current = { ...BACTERIA_START_POS };
+    prevAntibioticPositionsRef.current = newPositions.map(pos => ({ ...pos }));
+    poweredUpRef.current = false;
+    justCollectedBoosterRef.current = false;
     setScore(0);
     setLives(3);
     setGameActive(true);
@@ -588,6 +672,10 @@ const BacteriaGame = () => {
     if (!isRunning || !gameActive) return;
 
     const interval = setInterval(() => {
+      // IMPORTANT: Store previous positions BEFORE movement for crossing collision detection
+      prevBacteriaPositionRef.current = { ...bacteriaPositionRef.current };
+      prevAntibioticPositionsRef.current = antibioticPositionsRef.current.map(pos => ({ ...pos }));
+      
       moveBacteria();
       moveAntibiotics();
       if (poweredUp) {
@@ -595,11 +683,15 @@ const BacteriaGame = () => {
           const newTimer = prev <= 200 ? 0 : prev - 200;
           if (newTimer === 0) {
             setPoweredUp(false);
+            poweredUpRef.current = false; // IMPORTANT: Sync ref when power-up expires
           }
           return newTimer;
         });
       }
       checkCollisions();
+      
+      // Reset the justCollectedBoosterRef after collision check
+      justCollectedBoosterRef.current = false;
     }, 200);
 
     return () => clearInterval(interval);
