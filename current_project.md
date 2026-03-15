@@ -70,7 +70,8 @@ amr-pacman/
 │   │   └── PlatformContext.tsx   # Platform detection context
 │   ├── game/                     # Game-specific code
 │   │   ├── components/           # Game UI components
-│   │   │   ├── BacteriaGame.tsx  # Main game component
+│   │   │   ├── BacteriaGame.tsx  # Main game component (play as bacteria)
+│   │   │   ├── AntibioticGame.tsx # Alternative game mode (play as antibiotic)
 │   │   │   ├── GameStats.tsx     # Score/lives display
 │   │   │   ├── GameControls.tsx  # Control instructions
 │   │   │   ├── GameLegend.tsx    # Game element explanations
@@ -124,13 +125,23 @@ amr-pacman/
 #### Core Game Modules:
 1. **`BacteriaGame.tsx`** (app/game/components/BacteriaGame.tsx)
    - Main game controller component (600+ lines)
+   - Player controls bacteria to eat nutrients and avoid antibiotics
    - Manages game state: score, lives, positions, power-ups
    - Handles game loop with 200ms intervals
-   - Implements movement logic for bacteria and antibiotics
+   - Implements movement logic for bacteria (player) and antibiotics (AI enemies)
    - Manages collision detection and game rules
    - Responsive design calculations for different screen sizes
 
-2. **`useGameLoop.ts`** (app/game/hooks/useGameLoop.ts)
+2. **`AntibioticGame.tsx`** (app/game/components/AntibioticGame.tsx)
+   - Alternative role-reversed game mode (600+ lines)
+   - Player controls antibiotic to clear infected cells
+   - Bacteria act as AI enemies that chase the player
+   - Win condition: Clear all infected cells (nutrients)
+   - Uses same game engine architecture as BacteriaGame
+   - Separate UI theming (blue/cyan color scheme vs green)
+   - Desktop-focused design with larger cell sizes
+
+3. **`useGameLoop.ts`** (app/game/hooks/useGameLoop.ts)
    - Custom hook for game timing and keyboard input
    - 200ms tick interval by default
    - Direction queuing system for smooth controls
