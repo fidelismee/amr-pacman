@@ -733,7 +733,13 @@ const BacteriaGame = () => {
   };
 
   return (
-    <div className="min-h-dvh max-h-dvh bg-gradient-to-br from-slate-900 to-gray-950 text-white touch-none overflow-hidden flex flex-col game-landscape-optimized">
+    <div 
+  className="min-h-dvh max-h-dvh text-white touch-none overflow-hidden flex flex-col game-landscape-optimized bg-cover bg-center bg-no-repeat"
+  style={{ 
+    backgroundImage: "url('/background.png')",
+    backgroundAttachment: 'fixed' // Keeps the background steady during scrolls
+  }}
+>
       <div className="w-full max-w-6xl mx-auto flex-1 flex flex-col overflow-y-auto overflow-x-hidden safe-area-padding p-1 md:p-2 full-width-landscape">
         {/* Portrait mode warning for mobile PWA - More Compact */}
         {isPortrait && platform.isPWA && (
@@ -765,20 +771,13 @@ const BacteriaGame = () => {
           </div>
         )}
         
-        <header className="text-center mb-1 md:mb-2">
-          <h1 className="text-xl md:text-2xl font-bold mb-0.5 md:mb-1 bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
-            🦠 Bacterial Survival
-            {platform.isPWA && platform.isMobile && (
-              <span className="ml-0.5 md:ml-1 text-xs align-middle bg-green-900/30 text-green-300 px-0.5 md:px-1 py-0.25 md:py-0.5 rounded-full">PWA</span>
-            )}
-          </h1>
-          <p className="text-gray-300 text-xs">
-            Eat green dots. Avoid <span className="text-red-400 font-bold">RED</span> antibiotics. Grab blue boosters!
-            {showKeyboardInstructions && (
-              <span className="block mt-0.25 text-green-300 text-xs">Use arrow keys to move • Space to pause • R to restart</span>
-            )}
-          </p>
-        </header>
+<header className="text-center mt-16 mb-0">
+  <img
+    src="/AMR-Busters.png" 
+    alt="AMR Busters Banner"
+     className="w-full max-w-xs mx-auto -translate-x-24 relative"
+  />
+</header>
 
         <div className="flex flex-col md:flex-row gap-1 md:gap-2 items-start">
           <div className="flex-1 w-full flex flex-col items-center">
