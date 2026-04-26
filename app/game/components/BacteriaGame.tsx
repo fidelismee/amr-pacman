@@ -11,6 +11,7 @@ import { Bacteria } from '../../../src/entities/Bacteria';
 import { BacteriaRenderer } from '../../../src/components/BacteriaRenderer';
 import { Antibiotic } from '../../../src/entities/Antibiotic';
 import { AntibioticRenderer } from '../../../src/components/AntibioticRenderer';
+import { questions, Question } from '../../../src/data/questions';
 
 import { 
   LEVEL_1, 
@@ -65,6 +66,12 @@ const BacteriaGame = () => {
   const [isRunning, setIsRunning] = useState(true);
   // Orientation detection for mobile PWA
   const [isPortrait, setIsPortrait] = useState(false);
+
+  const [showQuestion, setShowQuestion] = useState(false);
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
+  
+  const [feedback, setFeedback] = useState<null | "correct" | "wrong">(null);
+  
 
   const antibioticDirectionsRef = useRef<Direction[]>([...INITIAL_ENEMY_DIRECTIONS]);
   const nextDirectionRef = useRef<Direction | null>(null);
@@ -572,24 +579,71 @@ const BacteriaGame = () => {
         } else {
           // Die
           playEffect('function');
-          setLives(prev => {
-            const newLives = prev - 1;
-            if (newLives <= 0) {
-              stopAllLoops();
-              setGameActive(false);
-              setGameMessage('💀 Sterilized! Game Over');
-            }
-            return newLives;
-          });
-          // Reset positions but keep scattered
-          setBacteriaPosition(BACTERIA_START_POS);
-          setAntibioticPositions(generateScatteredPositions());
-          antibioticDirectionsRef.current = [...INITIAL_ENEMY_DIRECTIONS];
+          triggerQuestion();
         }
       }
     });
   };
 
+  const getDifficulty = (): "easy" | "moderate" | "hard" => {
+  if (lives >= 3) return "easy";
+  if (lives === 2) return "moderate";
+  return "hard";
+};
+
+const triggerQuestion = () => {
+  const difficulty = getDifficulty();
+
+  const filtered = questions.filter(
+    q => q.difficulty === difficulty
+  );
+
+  const randomQuestion =
+    filtered[Math.floor(Math.random() * filtered.length)];
+
+  setCurrentQuestion(randomQuestion);
+  setShowQuestion(true);
+  setIsRunning(false);
+};
+
+const handleAnswer = (selected: string) => {
+  if (!currentQuestion) return;
+
+  const correct = selected === currentQuestion.answer;
+
+  if (correct) {
+    setScore(prev => prev + 100);
+    setFeedback("correct");
+  } else {
+    setLives(prev => {
+      const newLives = prev - 1;
+
+      if (newLives <= 0) {
+        stopAllLoops();
+        setGameActive(false);
+        setGameMessage("💀 Sterilized! Game Over");
+      }
+
+      return newLives;
+    });
+
+    setFeedback("wrong");
+  }
+
+  setShowQuestion(false);
+  setCurrentQuestion(null);
+  setIsRunning(true);
+
+  // auto-hide feedback popup
+  setTimeout(() => {
+    setFeedback(null);
+  }, 1000);
+
+  // reset positions
+  setBacteriaPosition(BACTERIA_START_POS);
+  setAntibioticPositions(generateScatteredPositions());
+  antibioticDirectionsRef.current = [...INITIAL_ENEMY_DIRECTIONS];
+};
   const initializeGame = useCallback(() => {
     setLevel(LEVEL_1.map(row => [...row]));
     setBacteriaPosition(BACTERIA_START_POS);
@@ -882,6 +936,45 @@ const BacteriaGame = () => {
 
                   {/* Overlays */}
                   {/* Only show "Click to Focus" for desktop browsers (not PWA/mobile) */}
+                  {showQuestion && currentQuestion && (
+  <div className="absolute inset-0 bg-black/85 flex items-center justify-center z-50">
+    <div className="bg-gray-800 border-2 border-green-500 rounded-xl p-6 w-[90%] max-w-xl shadow-2xl">
+      <h2 className="text-xl font-bold text-green-300 mb-4 text-center">
+        🧪 AMR Challenge
+      </h2>
+
+      <p className="text-white mb-5 text-center">
+        {currentQuestion.question}
+      </p>
+
+      <div className="space-y-3">
+        {currentQuestion.options.map((option) => (
+          <button
+            key={option}
+            onClick={() => handleAnswer(option)}
+            className="w-full bg-gray-700 hover:bg-green-600 transition p-3 rounded-lg text-left"
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
+{feedback && (
+  <div className="absolute inset-0 flex items-center justify-center z-[60] pointer-events-none">
+    <div
+      className={`
+        px-8 py-4 rounded-xl text-2xl font-bold shadow-2xl animate-bounce
+        ${feedback === "correct"
+          ? "bg-green-600 text-white"
+          : "bg-red-600 text-white"}
+      `}
+    >
+      {feedback === "correct" ? "✔ Correct!" : "✖ Wrong!"}
+    </div>
+  </div>
+)}
                   {!hasFocus && !platform.isPWA && !platform.isMobile && (
                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-30">
                       <div className="text-center p-3 bg-gray-900 rounded border border-green-500">
