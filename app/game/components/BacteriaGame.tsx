@@ -2,6 +2,8 @@
 
 "use client";
 
+import LoadingScreen from './Loading_Screen'; 
+import Cutscene from './cutscene'; 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { usePlatform, useShouldShowTouchControls, useShouldShowKeyboardInstructions } from '../../contexts/PlatformContext';
@@ -39,6 +41,10 @@ const BacteriaGame = () => {
   const platform = usePlatform();
   const showTouchControls = useShouldShowTouchControls();
   const showKeyboardInstructions = useShouldShowKeyboardInstructions();
+
+  // STEP B: LOADING STATE ---
+  const [isLoading, setIsLoading] = useState(true);
+  const [showCutscene, setShowCutscene] = useState(false); 
   
   const [level, setLevel] = useState<Level>(LEVEL_1);
   const [bacteriaPosition, setBacteriaPosition] = useState<Position>(BACTERIA_START_POS);
@@ -732,12 +738,32 @@ const BacteriaGame = () => {
     return `/assets/lives/live-${clampedLives}.png`;
   };
 
+  // --- STEP C: RENDER LOADING SCREEN ---
+  if (isLoading) {
+    return (
+      <LoadingScreen 
+        onFinished={() => {
+          setIsLoading(false);
+          setShowCutscene(true); // After loading, trigger the cutscene
+        }} 
+      />
+    );
+  }
+  if (showCutscene) {
+    return (
+      <Cutscene 
+        onFinished={() => {
+          setShowCutscene(false); 
+        }} 
+      />
+    );
+  }
   return (
     <div 
   className="min-h-dvh max-h-dvh text-white touch-none overflow-hidden flex flex-col game-landscape-optimized bg-cover bg-center bg-no-repeat"
   style={{ 
     backgroundImage: "url('/background.png')",
-    backgroundAttachment: 'fixed' // Keeps the background steady during scrolls
+    backgroundAttachment: 'fixed' 
   }}
 >
       <div className="w-full max-w-6xl mx-auto flex-1 flex flex-col overflow-y-auto overflow-x-hidden safe-area-padding p-1 md:p-2 full-width-landscape">
