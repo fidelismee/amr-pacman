@@ -554,6 +554,18 @@ const handleAnswer = (selected: string) => {
     setHasFocus(true);
   }, [ensureAudioUnlocked, currentLevelIndex, initializeLevel]);
 
+  // Dev/test cheat: jump straight to a level (Ctrl+Alt+1/2/3).
+  const jumpToLevel = useCallback((index: number) => {
+    if (index < 0 || index >= LEVELS.length) return;
+    ensureAudioUnlocked();
+    setShowQuestion(false);
+    setCurrentQuestion(null);
+    setFeedback(null);
+    setCurrentLevelIndex(index);
+    initializeLevel(index, false); // keep score, reset the chosen level fresh
+    setHasFocus(true);
+  }, [ensureAudioUnlocked, initializeLevel]);
+
   // Initial Load
   useEffect(() => {
     initializeGame();
@@ -562,11 +574,18 @@ const handleAnswer = (selected: string) => {
   // Controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Dev/test cheat: Ctrl+Alt+1/2/3 jumps to that level (works any time).
+      if (e.ctrlKey && e.altKey && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) {
+        e.preventDefault();
+        jumpToLevel(e.code === 'Digit1' ? 0 : e.code === 'Digit2' ? 1 : 2);
+        return;
+      }
+
       const normalizedKey = e.code === 'Space' ? ' ' : e.key;
 
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(normalizedKey)) e.preventDefault();
       if (!isRunning && ![' ', 'r', 'R'].includes(normalizedKey)) return;
-      
+
       switch (normalizedKey) {
         case 'ArrowUp': handleDirectionChange('up'); break;
         case 'ArrowDown': handleDirectionChange('down'); break;
@@ -578,7 +597,7 @@ const handleAnswer = (selected: string) => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleDirectionChange, handlePauseToggle, handleRestart, isRunning]);
+  }, [handleDirectionChange, handlePauseToggle, handleRestart, jumpToLevel, isRunning]);
 
   // Game Loop
   useEffect(() => {
