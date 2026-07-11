@@ -841,10 +841,10 @@ const handleAnswer = (selected: string) => {
   </div>
 )}
 {feedback && (
-  <div className="absolute inset-0 flex items-center justify-center z-[60] pointer-events-none">
+  <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[60] pointer-events-none">
     <div
       className={`
-        px-8 py-4 rounded-xl text-2xl font-bold shadow-2xl animate-bounce
+        px-4 py-1.5 rounded-full text-sm font-bold shadow-2xl animate-bounce
         ${feedback === "correct"
           ? "bg-green-600 text-white"
           : "bg-red-600 text-white"}
