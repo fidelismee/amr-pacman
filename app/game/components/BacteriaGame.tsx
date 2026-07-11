@@ -15,22 +15,15 @@ import { Antibiotic } from '../../../src/entities/Antibiotic';
 import { AntibioticRenderer } from '../../../src/components/AntibioticRenderer';
 import { questions, Question } from '../../../src/data/questions';
 
-import { 
-  LEVEL_1, 
-  GRID_WIDTH, 
-  GRID_HEIGHT, 
-  ANTIBIOTIC_START as BACTERIA_START_POS,
-  BACTERIA_STARTS as ANTIBIOTIC_STARTS,
-  Level, 
-  CellType 
+import {
+  LEVELS,
+  buildLevelState,
+  generateSpawnPositions,
+  pickRespawnPosition,
 } from '../levels';
-
-// Types
-type Direction = 'up' | 'down' | 'left' | 'right';
-interface Position {
-  x: number;
-  y: number;
-}
+import type { Direction, Position, Level } from '../types';
+import { computeAntibioticMoves } from '../ai/antibioticMovement';
+import { getEffectiveTier } from '../quiz/difficulty';
 
 // Constants
 const CELL_SIZE = 24;
@@ -47,11 +40,15 @@ const BacteriaGame = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showCutscene, setShowCutscene] = useState(false); 
   
-  const [level, setLevel] = useState<Level>(LEVEL_1);
-  const [bacteriaPosition, setBacteriaPosition] = useState<Position>(BACTERIA_START_POS);
+  const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
+  const [levelComplete, setLevelComplete] = useState(false);
+  const currentConfig = LEVELS[currentLevelIndex];
+
+  const [level, setLevel] = useState<Level>(() => buildLevelState(LEVELS[0]));
+  const [bacteriaPosition, setBacteriaPosition] = useState<Position>(LEVELS[0].playerStart);
   const [antibioticPositions, setAntibioticPositions] = useState<Position[]>([]);
   const [bacteriaInstance, setBacteriaInstance] = useState<Bacteria>(
-    new Bacteria(BACTERIA_START_POS.x, BACTERIA_START_POS.y)
+    new Bacteria(LEVELS[0].playerStart.x, LEVELS[0].playerStart.y)
   );
   const [antibioticInstances, setAntibioticInstances] = useState<Antibiotic[]>([]);
   
@@ -64,7 +61,7 @@ const BacteriaGame = () => {
   // Refs for mutable state to avoid stale closure issues
   const poweredUpRef = useRef(false);
   const justCollectedBoosterRef = useRef(false);
-  const bacteriaPositionRef = useRef<Position>(BACTERIA_START_POS);
+  const bacteriaPositionRef = useRef<Position>(LEVELS[0].playerStart);
   const antibioticPositionsRef = useRef<Position[]>([]);
   const [gameMessage, setGameMessage] = useState<string>('');
   // Auto-focus for PWA/mobile, manual focus for desktop
@@ -93,9 +90,10 @@ const BacteriaGame = () => {
     isRunning,
   });
 
-  const boardPixelWidth = GRID_WIDTH * CELL_SIZE;
-  const boardPixelHeight = GRID_HEIGHT * CELL_SIZE;
-  
+  // Current level dimensions (per-level, derived from the runtime grid)
+  const gridWidth = level[0]?.length ?? 0;
+  const gridHeight = level.length;
+
   // Calculate responsive cell size for mobile
   const [responsiveCellSize, setResponsiveCellSize] = useState(CELL_SIZE);
   const boardRef = useRef<HTMLDivElement>(null);
@@ -119,8 +117,8 @@ const BacteriaGame = () => {
       const availableHeight = viewportHeight - reservedHeight;
       
       // Calculate cell size based on both width and height constraints
-      const cellSizeByWidth = Math.floor(availableWidth / GRID_WIDTH);
-      const cellSizeByHeight = Math.floor(availableHeight / GRID_HEIGHT);
+      const cellSizeByWidth = Math.floor(availableWidth / gridWidth);
+      const cellSizeByHeight = Math.floor(availableHeight / gridHeight);
       
       // Use the smaller of the two to ensure board fits in viewport
       const newCellSize = Math.min(cellSizeByWidth, cellSizeByHeight);
@@ -138,7 +136,7 @@ const BacteriaGame = () => {
       window.removeEventListener('resize', updateCellSize);
       window.removeEventListener('orientationchange', updateCellSize);
     };
-  }, [platform.isMobile]);
+  }, [platform.isMobile, gridWidth, gridHeight]);
   
   // Detect orientation for mobile PWA
   useEffect(() => {
@@ -157,45 +155,12 @@ const BacteriaGame = () => {
     };
   }, [platform.isMobile]);
   
-  const responsiveBoardWidth = GRID_WIDTH * responsiveCellSize;
-  const responsiveBoardHeight = GRID_HEIGHT * responsiveCellSize;
+  const responsiveBoardWidth = gridWidth * responsiveCellSize;
+  const responsiveBoardHeight = gridHeight * responsiveCellSize;
 
-  // --- NEW: Quadrant-Based Spawning Logic ---
-  const generateScatteredPositions = (): Position[] => {
-    // Define the 4 quadrants for 27x19 grid (excluding the very center safe zone)
-    const quadrants = [
-      { minX: 1, maxX: 8, minY: 1, maxY: 4 },     // Top-Left
-      { minX: 18, maxX: 25, minY: 1, maxY: 4 },   // Top-Right
-      { minX: 1, maxX: 8, minY: 14, maxY: 17 },   // Bottom-Left
-      { minX: 18, maxX: 25, minY: 14, maxY: 17 }, // Bottom-Right
-    ];
-
-    const selectedPositions: Position[] = [];
-
-    quadrants.forEach(quad => {
-      const validInQuad: Position[] = [];
-      // Find all valid empty cells in this quadrant
-      for (let y = quad.minY; y <= quad.maxY; y++) {
-        for (let x = quad.minX; x <= quad.maxX; x++) {
-          // If not a wall (1), it's a valid spawn point
-          if (LEVEL_1[y]?.[x] !== 1) {
-            validInQuad.push({ x, y });
-          }
-        }
-      }
-
-      // Pick one random spot from this quadrant
-      if (validInQuad.length > 0) {
-        const randomIndex = Math.floor(Math.random() * validInQuad.length);
-        selectedPositions.push(validInQuad[randomIndex]);
-      } else {
-        // Fallback to the corner of the quadrant if no valid spots found (unlikely)
-        selectedPositions.push({ x: quad.minX, y: quad.minY });
-      }
-    });
-
-    return selectedPositions;
-  };
+  // Spawn antibiotics from the current level's configured zones.
+  const generateScatteredPositions = (): Position[] =>
+    generateSpawnPositions(currentConfig);
 
   const canMoveTo = (x: number, y: number): boolean => {
     if (x < 0 || x >= level[0].length || y < 0 || y >= level.length) return false;
@@ -483,7 +448,7 @@ const BacteriaGame = () => {
   };
 
   // Store previous positions for crossing collision detection
-  const prevBacteriaPositionRef = useRef<Position>(BACTERIA_START_POS);
+  const prevBacteriaPositionRef = useRef<Position>(LEVELS[0].playerStart);
   const prevAntibioticPositionsRef = useRef<Position[]>([]);
 
   const checkCollisions = () => {
@@ -554,31 +519,11 @@ const BacteriaGame = () => {
           // Respawn the antibiotic after 3 seconds
           setTimeout(() => {
             setAntibioticPositions(prev => {
-              // Generate a new position in a random quadrant
-              const quadrants = [
-                { minX: 1, maxX: 8, minY: 1, maxY: 4 },     // Top-Left
-                { minX: 18, maxX: 25, minY: 1, maxY: 4 },   // Top-Right
-                { minX: 1, maxX: 8, minY: 14, maxY: 17 },   // Bottom-Left
-                { minX: 18, maxX: 25, minY: 14, maxY: 17 }, // Bottom-Right
-              ];
-              
-              const randomQuadrant = quadrants[Math.floor(Math.random() * quadrants.length)];
-              const validPositions: Position[] = [];
-              
-              // Find all valid empty cells in this quadrant
-              for (let y = randomQuadrant.minY; y <= randomQuadrant.maxY; y++) {
-                for (let x = randomQuadrant.minX; x <= randomQuadrant.maxX; x++) {
-                  if (LEVEL_1[y]?.[x] !== 1) {
-                    validPositions.push({ x, y });
-                  }
-                }
+              // Generate a new position from the current level's spawn zones
+              const respawnPos = pickRespawnPosition(currentConfig);
+              if (respawnPos) {
+                return [...prev, respawnPos];
               }
-              
-              if (validPositions.length > 0) {
-                const randomPos = validPositions[Math.floor(Math.random() * validPositions.length)];
-                return [...prev, randomPos];
-              }
-              
               return prev; // No valid position found, don't respawn
             });
           }, 3000); // 3 second respawn delay
@@ -646,33 +591,41 @@ const handleAnswer = (selected: string) => {
   }, 1000);
 
   // reset positions
-  setBacteriaPosition(BACTERIA_START_POS);
+  setBacteriaPosition(currentConfig.playerStart);
   setAntibioticPositions(generateScatteredPositions());
   antibioticDirectionsRef.current = [...INITIAL_ENEMY_DIRECTIONS];
 };
-  const initializeGame = useCallback(() => {
-    setLevel(LEVEL_1.map(row => [...row]));
-    setBacteriaPosition(BACTERIA_START_POS);
-    // Use the new SCATTERED generator
-    const newPositions = generateScatteredPositions();
-    setAntibioticPositions(newPositions);
-    antibioticDirectionsRef.current = [...INITIAL_ENEMY_DIRECTIONS];
-    // Reset all refs to avoid stale state bugs
-    bacteriaPositionRef.current = BACTERIA_START_POS;
-    antibioticPositionsRef.current = newPositions;
-    // Initialize previous position refs for crossing collision detection
-    prevBacteriaPositionRef.current = { ...BACTERIA_START_POS };
-    prevAntibioticPositionsRef.current = newPositions.map(pos => ({ ...pos }));
+  const initializeLevel = useCallback((index: number, resetScore: boolean) => {
+    const config = LEVELS[index];
+    const grid = buildLevelState(config);
+    const spawns = generateSpawnPositions(config);
+
+    setLevel(grid);
+    setBacteriaPosition(config.playerStart);
+    setAntibioticPositions(spawns);
+    antibioticDirectionsRef.current = spawns.map(() => 'right');
+
+    bacteriaPositionRef.current = config.playerStart;
+    antibioticPositionsRef.current = spawns;
+    prevBacteriaPositionRef.current = { ...config.playerStart };
+    prevAntibioticPositionsRef.current = spawns.map((pos) => ({ ...pos }));
     poweredUpRef.current = false;
     justCollectedBoosterRef.current = false;
-    setScore(0);
+
+    if (resetScore) setScore(0);
     setLives(3);
     setGameActive(true);
     setPoweredUp(false);
     setPowerUpTimer(0);
     setGameMessage('');
+    setLevelComplete(false);
     setIsRunning(true);
   }, []);
+
+  const initializeGame = useCallback(() => {
+    setCurrentLevelIndex(0);
+    initializeLevel(0, true);
+  }, [initializeLevel]);
 
   const handleBoardFocus = useCallback(() => {
     if (!hasFocus) {
@@ -878,8 +831,8 @@ const handleAnswer = (selected: string) => {
                     className="bg-black/80 backdrop-blur-sm relative z-0"
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: `repeat(${GRID_WIDTH}, ${responsiveCellSize}px)`,
-                      gridTemplateRows: `repeat(${GRID_HEIGHT}, ${responsiveCellSize}px)`,
+                      gridTemplateColumns: `repeat(${gridWidth}, ${responsiveCellSize}px)`,
+                      gridTemplateRows: `repeat(${gridHeight}, ${responsiveCellSize}px)`,
                     }}
                   >
                     {level.map((row, y) =>
