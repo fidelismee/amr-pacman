@@ -5,6 +5,7 @@ An antibiotic resistance themed Pacman game built as a Progressive Web App (PWA)
 ## Features
 
 - 🎮 **Gameplay**: Control bacteria to consume nutrients while avoiding antibiotics
+- 🎚️ **Three Levels**: Easy → Moderate → Hard, each with a larger map, tougher AMR questions, and smarter antibiotic pursuit
 - 🤖 **Enhanced AI**: Smart antibiotic movement with randomness and collision avoidance
 - 📱 **Mobile Optimized**: Responsive design that works on all devices
 - 🎯 **Touch Controls**: Built-in arrow controller for mobile devices
@@ -91,6 +92,18 @@ npm start
 - 💛 **Nutrients (Yellow)**: Collect for 10 points
 - 💜 **Resistance Boosters (Purple)**: Temporary power-up (50 points)
 - 🧱 **Membrane Walls (Dark)**: Obstacles
+
+## Levels
+
+The game has three levels played in sequence:
+
+| Level | Map size | Antibiotic behavior | Quiz baseline |
+|-------|----------|---------------------|---------------|
+| 1 — Easy | 15×11 | Wander (mostly random) | Easy |
+| 2 — Moderate | 21×15 | Hunt (sometimes heads toward you) | Moderate |
+| 3 — Hard | 27×19 | Pursue (actively chases via shortest path) | Hard |
+
+Clearing a level advances to the next; lives reset to 3 each level and score is cumulative. Beating Level 3 wins the game.
 
 ## Technical Stack
 
