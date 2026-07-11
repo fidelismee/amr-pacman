@@ -15,22 +15,15 @@ import { Antibiotic } from '../../../src/entities/Antibiotic';
 import { AntibioticRenderer } from '../../../src/components/AntibioticRenderer';
 import { questions, Question } from '../../../src/data/questions';
 
-import { 
-  LEVEL_1, 
-  GRID_WIDTH, 
-  GRID_HEIGHT, 
-  ANTIBIOTIC_START as BACTERIA_START_POS,
-  BACTERIA_STARTS as ANTIBIOTIC_STARTS,
-  Level, 
-  CellType 
+import {
+  LEVELS,
+  buildLevelState,
+  generateSpawnPositions,
+  pickRespawnPosition,
 } from '../levels';
-
-// Types
-type Direction = 'up' | 'down' | 'left' | 'right';
-interface Position {
-  x: number;
-  y: number;
-}
+import type { Direction, Position, Level } from '../types';
+import { computeAntibioticMoves } from '../ai/antibioticMovement';
+import { getEffectiveTier } from '../quiz/difficulty';
 
 // Constants
 const CELL_SIZE = 24;
@@ -47,11 +40,15 @@ const BacteriaGame = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showCutscene, setShowCutscene] = useState(false); 
   
-  const [level, setLevel] = useState<Level>(LEVEL_1);
-  const [bacteriaPosition, setBacteriaPosition] = useState<Position>(BACTERIA_START_POS);
+  const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
+  const [levelComplete, setLevelComplete] = useState(false);
+  const currentConfig = LEVELS[currentLevelIndex];
+
+  const [level, setLevel] = useState<Level>(() => buildLevelState(LEVELS[0]));
+  const [bacteriaPosition, setBacteriaPosition] = useState<Position>(LEVELS[0].playerStart);
   const [antibioticPositions, setAntibioticPositions] = useState<Position[]>([]);
   const [bacteriaInstance, setBacteriaInstance] = useState<Bacteria>(
-    new Bacteria(BACTERIA_START_POS.x, BACTERIA_START_POS.y)
+    new Bacteria(LEVELS[0].playerStart.x, LEVELS[0].playerStart.y)
   );
   const [antibioticInstances, setAntibioticInstances] = useState<Antibiotic[]>([]);
   
@@ -64,7 +61,7 @@ const BacteriaGame = () => {
   // Refs for mutable state to avoid stale closure issues
   const poweredUpRef = useRef(false);
   const justCollectedBoosterRef = useRef(false);
-  const bacteriaPositionRef = useRef<Position>(BACTERIA_START_POS);
+  const bacteriaPositionRef = useRef<Position>(LEVELS[0].playerStart);
   const antibioticPositionsRef = useRef<Position[]>([]);
   const [gameMessage, setGameMessage] = useState<string>('');
   // Auto-focus for PWA/mobile, manual focus for desktop
@@ -93,9 +90,10 @@ const BacteriaGame = () => {
     isRunning,
   });
 
-  const boardPixelWidth = GRID_WIDTH * CELL_SIZE;
-  const boardPixelHeight = GRID_HEIGHT * CELL_SIZE;
-  
+  // Current level dimensions (per-level, derived from the runtime grid)
+  const gridWidth = level[0]?.length ?? 0;
+  const gridHeight = level.length;
+
   // Calculate responsive cell size for mobile
   const [responsiveCellSize, setResponsiveCellSize] = useState(CELL_SIZE);
   const boardRef = useRef<HTMLDivElement>(null);
@@ -119,8 +117,8 @@ const BacteriaGame = () => {
       const availableHeight = viewportHeight - reservedHeight;
       
       // Calculate cell size based on both width and height constraints
-      const cellSizeByWidth = Math.floor(availableWidth / GRID_WIDTH);
-      const cellSizeByHeight = Math.floor(availableHeight / GRID_HEIGHT);
+      const cellSizeByWidth = Math.floor(availableWidth / gridWidth);
+      const cellSizeByHeight = Math.floor(availableHeight / gridHeight);
       
       // Use the smaller of the two to ensure board fits in viewport
       const newCellSize = Math.min(cellSizeByWidth, cellSizeByHeight);
@@ -138,7 +136,7 @@ const BacteriaGame = () => {
       window.removeEventListener('resize', updateCellSize);
       window.removeEventListener('orientationchange', updateCellSize);
     };
-  }, [platform.isMobile]);
+  }, [platform.isMobile, gridWidth, gridHeight]);
   
   // Detect orientation for mobile PWA
   useEffect(() => {
@@ -157,45 +155,12 @@ const BacteriaGame = () => {
     };
   }, [platform.isMobile]);
   
-  const responsiveBoardWidth = GRID_WIDTH * responsiveCellSize;
-  const responsiveBoardHeight = GRID_HEIGHT * responsiveCellSize;
+  const responsiveBoardWidth = gridWidth * responsiveCellSize;
+  const responsiveBoardHeight = gridHeight * responsiveCellSize;
 
-  // --- NEW: Quadrant-Based Spawning Logic ---
-  const generateScatteredPositions = (): Position[] => {
-    // Define the 4 quadrants for 27x19 grid (excluding the very center safe zone)
-    const quadrants = [
-      { minX: 1, maxX: 8, minY: 1, maxY: 4 },     // Top-Left
-      { minX: 18, maxX: 25, minY: 1, maxY: 4 },   // Top-Right
-      { minX: 1, maxX: 8, minY: 14, maxY: 17 },   // Bottom-Left
-      { minX: 18, maxX: 25, minY: 14, maxY: 17 }, // Bottom-Right
-    ];
-
-    const selectedPositions: Position[] = [];
-
-    quadrants.forEach(quad => {
-      const validInQuad: Position[] = [];
-      // Find all valid empty cells in this quadrant
-      for (let y = quad.minY; y <= quad.maxY; y++) {
-        for (let x = quad.minX; x <= quad.maxX; x++) {
-          // If not a wall (1), it's a valid spawn point
-          if (LEVEL_1[y]?.[x] !== 1) {
-            validInQuad.push({ x, y });
-          }
-        }
-      }
-
-      // Pick one random spot from this quadrant
-      if (validInQuad.length > 0) {
-        const randomIndex = Math.floor(Math.random() * validInQuad.length);
-        selectedPositions.push(validInQuad[randomIndex]);
-      } else {
-        // Fallback to the corner of the quadrant if no valid spots found (unlikely)
-        selectedPositions.push({ x: quad.minX, y: quad.minY });
-      }
-    });
-
-    return selectedPositions;
-  };
+  // Spawn antibiotics from the current level's configured zones.
+  const generateScatteredPositions = (): Position[] =>
+    generateSpawnPositions(currentConfig);
 
   const canMoveTo = (x: number, y: number): boolean => {
     if (x < 0 || x >= level[0].length || y < 0 || y >= level.length) return false;
@@ -330,8 +295,13 @@ const BacteriaGame = () => {
         if (!newLevel.flat().includes(0)) {
           stopAllLoops();
           playEffect('function');
-          setGameActive(false);
-          setGameMessage('🎉 Infection Spread! Bacteria Wins!');
+          setIsRunning(false);
+          if (currentLevelIndex < LEVELS.length - 1) {
+            setLevelComplete(true);
+          } else {
+            setGameActive(false);
+            setGameMessage('🎉 Infection Spread! You Win!');
+          }
         }
       } 
       // Eat Booster
@@ -356,134 +326,24 @@ const BacteriaGame = () => {
     setAntibioticPositions(prev => {
       if (prev.length === 0) return prev; // Wait for init
 
-      const newPositions: Position[] = [];
-      
-      prev.forEach((antibiotic, index) => {
-        const currentDir = antibioticDirectionsRef.current[index];
-        const directions: { dir: Direction, x: number, y: number }[] = [
-          { dir: 'up', x: 0, y: -1 }, { dir: 'down', x: 0, y: 1 },
-          { dir: 'left', x: -1, y: 0 }, { dir: 'right', x: 1, y: 0 },
-        ];
-        
-        const getOpposite = (d: Direction) => 
-          d === 'up' ? 'down' : d === 'down' ? 'up' : d === 'left' ? 'right' : 'left';
-
-        // Check forward move
-        let nextPos = { ...antibiotic };
-        let moved = false;
-        let chosenDir = currentDir;
-
-        // Get all valid moves from current position
-        const validMoves = directions.filter(d => {
-          const tx = antibiotic.x + d.x;
-          const ty = antibiotic.y + d.y;
-          return canMoveTo(tx, ty);
-        });
-
-        if (validMoves.length > 0) {
-          // Add randomness to movement - 40% chance to change direction even if current direction is valid
-          const currentDirVec = directions.find(d => d.dir === currentDir);
-          const canContinueCurrent = currentDirVec && canMoveTo(antibiotic.x + currentDirVec.x, antibiotic.y + currentDirVec.y);
-          
-          if (canContinueCurrent && Math.random() < 0.6) {
-            // 60% chance to continue in current direction
-            nextPos = { x: antibiotic.x + currentDirVec.x, y: antibiotic.y + currentDirVec.y };
-            moved = true;
-            chosenDir = currentDir;
-          } else {
-            // 40% chance to choose random direction, or if can't continue current
-            // Weight the random choice: prefer non-reverse directions but allow all
-            const oppositeDir = getOpposite(currentDir);
-            const nonReverseMoves = validMoves.filter(d => d.dir !== oppositeDir);
-            
-            // If there are non-reverse options, use them 80% of the time
-            let movesToChooseFrom = validMoves;
-            if (nonReverseMoves.length > 0 && Math.random() < 0.8) {
-              movesToChooseFrom = nonReverseMoves;
-            }
-            
-            // Shuffle the moves for more randomness
-            const shuffledMoves = [...movesToChooseFrom].sort(() => Math.random() - 0.5);
-            const chosen = shuffledMoves[0];
-            
-            chosenDir = chosen.dir;
-            nextPos = { x: antibiotic.x + chosen.x, y: antibiotic.y + chosen.y };
-            moved = true;
-          }
-        }
-        // If no valid moves at all, stay in place (shouldn't happen in valid maze)
-        
-        // Update direction
-        antibioticDirectionsRef.current[index] = chosenDir;
-        
-        // 2. Check if target position is occupied by another antibiotic
-        const isOccupied = newPositions.some(p => p.x === nextPos.x && p.y === nextPos.y) || 
-                           prev.some((p, i) => i > index && p.x === nextPos.x && p.y === nextPos.y);
-
-        if (moved && !isOccupied) {
-          newPositions.push(nextPos);
-        } else if (isOccupied) {
-          // If blocked by another antibiotic, change direction immediately
-          // Try 180° turn (opposite direction) first
-          const oppositeDir = getOpposite(chosenDir);
-          const oppositeVec = directions.find(d => d.dir === oppositeDir);
-          
-          if (oppositeVec && canMoveTo(antibiotic.x + oppositeVec.x, antibiotic.y + oppositeVec.y)) {
-            // Can move in opposite direction
-            antibioticDirectionsRef.current[index] = oppositeDir;
-            nextPos = { x: antibiotic.x + oppositeVec.x, y: antibiotic.y + oppositeVec.y };
-            newPositions.push(nextPos);
-          } else {
-            // Can't move opposite, try 90° turns (perpendicular directions)
-            const perpendicularDirs = directions.filter(d => 
-              d.dir !== chosenDir && d.dir !== oppositeDir
-            );
-            
-            // Shuffle perpendicular directions for random choice
-            const shuffledPerpendicular = [...perpendicularDirs].sort(() => Math.random() - 0.5);
-            
-            let foundAlternative = false;
-            for (const dirVec of shuffledPerpendicular) {
-              if (canMoveTo(antibiotic.x + dirVec.x, antibiotic.y + dirVec.y)) {
-                antibioticDirectionsRef.current[index] = dirVec.dir;
-                nextPos = { x: antibiotic.x + dirVec.x, y: antibiotic.y + dirVec.y };
-                // Check if this alternative position is also occupied
-                const altOccupied = newPositions.some(p => p.x === nextPos.x && p.y === nextPos.y) || 
-                                   prev.some((p, i) => i > index && p.x === nextPos.x && p.y === nextPos.y);
-                if (!altOccupied) {
-                  newPositions.push(nextPos);
-                  foundAlternative = true;
-                  break;
-                }
-              }
-            }
-            
-            // If no alternative found, stay in place but change direction anyway
-            // This will help next iteration
-            if (!foundAlternative) {
-              newPositions.push(antibiotic);
-              // Still change direction to a random valid direction if possible
-              const validDirs = directions.filter(d => canMoveTo(antibiotic.x + d.x, antibiotic.y + d.y));
-              if (validDirs.length > 0) {
-                const randomDir = validDirs[Math.floor(Math.random() * validDirs.length)];
-                antibioticDirectionsRef.current[index] = randomDir.dir;
-              }
-            }
-          }
-        } else {
-          newPositions.push(antibiotic); // Stay still if can't move
-        }
+      const result = computeAntibioticMoves({
+        positions: prev,
+        directions: antibioticDirectionsRef.current,
+        isWall: (x, y) => !canMoveTo(x, y),
+        bacteria: bacteriaPositionRef.current,
+        profile: currentConfig.chaseProfile,
+        width: gridWidth,
+        height: gridHeight,
       });
-      
-      // IMPORTANT: Update ref immediately for collision detection in same tick
-      antibioticPositionsRef.current = newPositions;
-      
-      return newPositions;
+
+      antibioticDirectionsRef.current = result.directions;
+      antibioticPositionsRef.current = result.positions;
+      return result.positions;
     });
   };
 
   // Store previous positions for crossing collision detection
-  const prevBacteriaPositionRef = useRef<Position>(BACTERIA_START_POS);
+  const prevBacteriaPositionRef = useRef<Position>(LEVELS[0].playerStart);
   const prevAntibioticPositionsRef = useRef<Position[]>([]);
 
   const checkCollisions = () => {
@@ -548,39 +408,16 @@ const BacteriaGame = () => {
           // Eat Enemy - Remove temporarily and respawn after delay
           setAntibioticPositions(prev => prev.filter((a, i) => i !== index));
           setAntibioticInstances(prev => prev.filter((_, i) => i !== index));
+          antibioticDirectionsRef.current = antibioticDirectionsRef.current.filter((_, i) => i !== index);
           setScore(prev => prev + 100);
           playMovementEffect();
-          
-          // Respawn the antibiotic after 3 seconds
+
+          // Respawn the antibiotic in a configured spawn zone after 3 seconds
           setTimeout(() => {
-            setAntibioticPositions(prev => {
-              // Generate a new position in a random quadrant
-              const quadrants = [
-                { minX: 1, maxX: 8, minY: 1, maxY: 4 },     // Top-Left
-                { minX: 18, maxX: 25, minY: 1, maxY: 4 },   // Top-Right
-                { minX: 1, maxX: 8, minY: 14, maxY: 17 },   // Bottom-Left
-                { minX: 18, maxX: 25, minY: 14, maxY: 17 }, // Bottom-Right
-              ];
-              
-              const randomQuadrant = quadrants[Math.floor(Math.random() * quadrants.length)];
-              const validPositions: Position[] = [];
-              
-              // Find all valid empty cells in this quadrant
-              for (let y = randomQuadrant.minY; y <= randomQuadrant.maxY; y++) {
-                for (let x = randomQuadrant.minX; x <= randomQuadrant.maxX; x++) {
-                  if (LEVEL_1[y]?.[x] !== 1) {
-                    validPositions.push({ x, y });
-                  }
-                }
-              }
-              
-              if (validPositions.length > 0) {
-                const randomPos = validPositions[Math.floor(Math.random() * validPositions.length)];
-                return [...prev, randomPos];
-              }
-              
-              return prev; // No valid position found, don't respawn
-            });
+            const respawnPos = pickRespawnPosition(currentConfig);
+            if (!respawnPos) return;
+            antibioticDirectionsRef.current = [...antibioticDirectionsRef.current, 'right'];
+            setAntibioticPositions(prev => [...prev, respawnPos]);
           }, 3000); // 3 second respawn delay
         } else {
           // Die
@@ -591,14 +428,8 @@ const BacteriaGame = () => {
     });
   };
 
-  const getDifficulty = (): "easy" | "moderate" | "hard" => {
-  if (lives >= 3) return "easy";
-  if (lives === 2) return "moderate";
-  return "hard";
-};
-
 const triggerQuestion = () => {
-  const difficulty = getDifficulty();
+  const difficulty = getEffectiveTier(currentConfig.baseTier, lives);
 
   const filtered = questions.filter(
     q => q.difficulty === difficulty
@@ -646,33 +477,41 @@ const handleAnswer = (selected: string) => {
   }, 1000);
 
   // reset positions
-  setBacteriaPosition(BACTERIA_START_POS);
+  setBacteriaPosition(currentConfig.playerStart);
   setAntibioticPositions(generateScatteredPositions());
   antibioticDirectionsRef.current = [...INITIAL_ENEMY_DIRECTIONS];
 };
-  const initializeGame = useCallback(() => {
-    setLevel(LEVEL_1.map(row => [...row]));
-    setBacteriaPosition(BACTERIA_START_POS);
-    // Use the new SCATTERED generator
-    const newPositions = generateScatteredPositions();
-    setAntibioticPositions(newPositions);
-    antibioticDirectionsRef.current = [...INITIAL_ENEMY_DIRECTIONS];
-    // Reset all refs to avoid stale state bugs
-    bacteriaPositionRef.current = BACTERIA_START_POS;
-    antibioticPositionsRef.current = newPositions;
-    // Initialize previous position refs for crossing collision detection
-    prevBacteriaPositionRef.current = { ...BACTERIA_START_POS };
-    prevAntibioticPositionsRef.current = newPositions.map(pos => ({ ...pos }));
+  const initializeLevel = useCallback((index: number, resetScore: boolean) => {
+    const config = LEVELS[index];
+    const grid = buildLevelState(config);
+    const spawns = generateSpawnPositions(config);
+
+    setLevel(grid);
+    setBacteriaPosition(config.playerStart);
+    setAntibioticPositions(spawns);
+    antibioticDirectionsRef.current = spawns.map(() => 'right');
+
+    bacteriaPositionRef.current = config.playerStart;
+    antibioticPositionsRef.current = spawns;
+    prevBacteriaPositionRef.current = { ...config.playerStart };
+    prevAntibioticPositionsRef.current = spawns.map((pos) => ({ ...pos }));
     poweredUpRef.current = false;
     justCollectedBoosterRef.current = false;
-    setScore(0);
+
+    if (resetScore) setScore(0);
     setLives(3);
     setGameActive(true);
     setPoweredUp(false);
     setPowerUpTimer(0);
     setGameMessage('');
+    setLevelComplete(false);
     setIsRunning(true);
   }, []);
+
+  const initializeGame = useCallback(() => {
+    setCurrentLevelIndex(0);
+    initializeLevel(0, true);
+  }, [initializeLevel]);
 
   const handleBoardFocus = useCallback(() => {
     if (!hasFocus) {
@@ -697,9 +536,35 @@ const handleAnswer = (selected: string) => {
 
   const handleRestart = useCallback(() => {
     ensureAudioUnlocked();
-    initializeGame();
+    initializeLevel(currentLevelIndex, false); // restart current level, keep score
+    setHasFocus(true);
+  }, [ensureAudioUnlocked, currentLevelIndex, initializeLevel]);
+
+  const handleRestartFromStart = useCallback(() => {
+    ensureAudioUnlocked();
+    initializeGame(); // back to Level 1, score reset
     setHasFocus(true);
   }, [ensureAudioUnlocked, initializeGame]);
+
+  const handleAdvanceLevel = useCallback(() => {
+    ensureAudioUnlocked();
+    const nextIndex = currentLevelIndex + 1;
+    setCurrentLevelIndex(nextIndex);
+    initializeLevel(nextIndex, false); // keep cumulative score, reset lives to 3
+    setHasFocus(true);
+  }, [ensureAudioUnlocked, currentLevelIndex, initializeLevel]);
+
+  // Dev/test cheat: jump straight to a level (Ctrl+Alt+1/2/3).
+  const jumpToLevel = useCallback((index: number) => {
+    if (index < 0 || index >= LEVELS.length) return;
+    ensureAudioUnlocked();
+    setShowQuestion(false);
+    setCurrentQuestion(null);
+    setFeedback(null);
+    setCurrentLevelIndex(index);
+    initializeLevel(index, false); // keep score, reset the chosen level fresh
+    setHasFocus(true);
+  }, [ensureAudioUnlocked, initializeLevel]);
 
   // Initial Load
   useEffect(() => {
@@ -709,11 +574,18 @@ const handleAnswer = (selected: string) => {
   // Controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Dev/test cheat: Ctrl+Alt+1/2/3 jumps to that level (works any time).
+      if (e.ctrlKey && e.altKey && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) {
+        e.preventDefault();
+        jumpToLevel(e.code === 'Digit1' ? 0 : e.code === 'Digit2' ? 1 : 2);
+        return;
+      }
+
       const normalizedKey = e.code === 'Space' ? ' ' : e.key;
 
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(normalizedKey)) e.preventDefault();
       if (!isRunning && ![' ', 'r', 'R'].includes(normalizedKey)) return;
-      
+
       switch (normalizedKey) {
         case 'ArrowUp': handleDirectionChange('up'); break;
         case 'ArrowDown': handleDirectionChange('down'); break;
@@ -725,7 +597,7 @@ const handleAnswer = (selected: string) => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleDirectionChange, handlePauseToggle, handleRestart, isRunning]);
+  }, [handleDirectionChange, handlePauseToggle, handleRestart, jumpToLevel, isRunning]);
 
   // Game Loop
   useEffect(() => {
@@ -755,7 +627,7 @@ const handleAnswer = (selected: string) => {
     }, 200);
 
     return () => clearInterval(interval);
-  }, [isRunning, gameActive, bacteriaPosition, antibioticPositions, poweredUp, level]);
+  }, [isRunning, gameActive, bacteriaPosition, antibioticPositions, poweredUp, level, currentLevelIndex]);
 
   // Helpers
   const remainingNutrients = level.flat().filter(cell => cell === 0).length;
@@ -878,8 +750,8 @@ const handleAnswer = (selected: string) => {
                     className="bg-black/80 backdrop-blur-sm relative z-0"
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: `repeat(${GRID_WIDTH}, ${responsiveCellSize}px)`,
-                      gridTemplateRows: `repeat(${GRID_HEIGHT}, ${responsiveCellSize}px)`,
+                      gridTemplateColumns: `repeat(${gridWidth}, ${responsiveCellSize}px)`,
+                      gridTemplateRows: `repeat(${gridHeight}, ${responsiveCellSize}px)`,
                     }}
                   >
                     {level.map((row, y) =>
@@ -988,10 +860,10 @@ const handleAnswer = (selected: string) => {
   </div>
 )}
 {feedback && (
-  <div className="absolute inset-0 flex items-center justify-center z-[60] pointer-events-none">
+  <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[60] pointer-events-none">
     <div
       className={`
-        px-8 py-4 rounded-xl text-2xl font-bold shadow-2xl animate-bounce
+        px-4 py-1.5 rounded-full text-sm font-bold shadow-2xl animate-bounce
         ${feedback === "correct"
           ? "bg-green-600 text-white"
           : "bg-red-600 text-white"}
@@ -1008,11 +880,22 @@ const handleAnswer = (selected: string) => {
                       </div>
                     </div>
                   )}
+                  {levelComplete && (
+                    <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-40">
+                      <div className="text-center">
+                        <h2 className="text-2xl font-bold mb-2 text-green-300">✅ Level Complete!</h2>
+                        <p className="text-sm text-gray-300 mb-4">
+                          {LEVELS[currentLevelIndex + 1]?.name ?? ''}
+                        </p>
+                        <button onClick={handleAdvanceLevel} className="px-6 py-2 bg-green-600 rounded font-bold">Next Level</button>
+                      </div>
+                    </div>
+                  )}
                   {!gameActive && (
                     <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-40">
                       <div className="text-center">
                         <h2 className="text-2xl font-bold mb-4 text-white">{gameMessage}</h2>
-                        <button onClick={handleRestart} className="px-6 py-2 bg-green-600 rounded font-bold">Try Again</button>
+                        <button onClick={handleRestartFromStart} className="px-6 py-2 bg-green-600 rounded font-bold">Try Again</button>
                       </div>
                     </div>
                   )}
@@ -1027,6 +910,7 @@ const handleAnswer = (selected: string) => {
             {/* Stats Panel - More Compact */}
             <div className="bg-gray-800 p-2 rounded-lg border border-gray-700 game-stats-compact">
               <h3 className="text-sm font-bold mb-1 text-green-300 text-center">Game Stats</h3>
+              <div className="text-[10px] text-center text-gray-400 mb-1">{currentConfig.name}</div>
               <div className="flex justify-between mb-0.5">
                 <span className="text-gray-400 text-xs">Score</span>
                 <span className="text-lg font-bold text-green-400">{score}</span>

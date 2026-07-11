@@ -1,5 +1,14 @@
 # AMR Pacman Game - Project Documentation
 
+## 2026-07-11 — Three-level difficulty progression
+
+Added sequential difficulty levels (Easy → Moderate → Hard), played in order:
+- **Larger maps per level** (15×11 → 21×15 → 27×19): three unique, hand-crafted asymmetric "open arena" layouts of increasing size and wall density, each verified fully connected. A flood-fill loader (`buildLevelState`) strips any unreachable dot, so no level is unwinnable.
+- **Scaling antibiotic chase AI** (`app/game/ai/antibioticMovement.ts`): `wander` (Easy) → `hunt` (Moderate) → `pursue` (Hard, BFS shortest-path chase toward the bacteria).
+- **Level-based quiz tiers** (`app/game/quiz/difficulty.ts`): each level sets a baseline question difficulty, raised further as lives are lost.
+- Lives reset to 3 each level; score is cumulative. Clearing Level 3 wins; losing all lives restarts from Level 1.
+- New shared types in `app/game/types.ts`; `app/game/levels.ts` rewritten to hold three `LevelConfig`s and spawn helpers.
+
 ## 1. Project Overview
 
 **Project Name**: AMR Pacman Game
