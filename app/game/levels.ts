@@ -6,39 +6,66 @@ import type { CellType, Level, LevelConfig, Position, Zone } from "./types";
 
 export type { CellType, Level } from "./types";
 
-// --- Map generation -------------------------------------------------------
+// --- Maps -----------------------------------------------------------------
 
-// Border walls + isolated pillars at even/even interior coords.
-// Guarantees a fully connected interior (odd rows and odd columns stay open).
-function latticeMap(width: number, height: number): Level {
-  const grid: Level = [];
-  for (let y = 0; y < height; y++) {
-    const row: CellType[] = [];
-    for (let x = 0; x < width; x++) {
-      if (x === 0 || y === 0 || x === width - 1 || y === height - 1) {
-        row.push(1);
-      } else if (x % 2 === 0 && y % 2 === 0) {
-        row.push(1);
-      } else {
-        row.push(0);
-      }
-    }
-    grid.push(row);
-  }
-  return grid;
-}
+// Hand-crafted, asymmetric "open arena" maps — unique per level, increasing in
+// size and wall density. Boosters (3) and the player-start empty tile (2) are
+// baked in; every other open cell (0) is a nutrient dot. All three are fully
+// connected from their player start (verified in levels.test.ts).
 
-function buildMap(
-  width: number,
-  height: number,
-  boosters: Position[],
-  empties: Position[],
-): Level {
-  const grid = latticeMap(width, height);
-  for (const b of boosters) grid[b.y][b.x] = 3;
-  for (const e of empties) grid[e.y][e.x] = 2;
-  return grid;
-}
+const EASY_MAP: Level = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,3,0,0,0,0,0,0,1,1,1,0,0,0,1],
+  [1,0,0,0,0,0,1,1,1,1,1,0,0,0,1],
+  [1,0,0,0,0,0,0,1,1,0,1,0,0,0,1],
+  [1,0,0,0,0,0,0,0,1,0,0,0,1,1,1],
+  [1,0,1,1,0,0,0,2,0,0,1,1,1,0,1],
+  [1,0,1,1,1,0,0,0,1,1,0,0,0,0,1],
+  [1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],
+  [1,0,0,0,0,1,0,1,1,0,0,0,0,0,1],
+  [1,0,0,0,0,1,0,0,0,0,0,0,0,3,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+];
+
+const MODERATE_MAP: Level = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,3,0,0,0,0,1,1,1,0,0,0,0,1,1,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,1,1,0,0,1,0,0,0,0,0,1],
+  [1,0,0,0,0,0,1,1,0,0,1,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,1,1,1,1,0,1,0,1,1,0,0,0,0,0,0,1],
+  [1,0,1,1,1,0,0,0,0,0,0,1,1,1,0,1,1,0,0,0,1],
+  [1,0,1,0,1,1,1,1,1,0,0,0,1,1,0,1,1,1,0,0,1],
+  [1,0,0,0,1,1,1,1,0,0,2,0,1,1,0,0,1,1,1,0,1],
+  [1,1,1,0,0,1,1,1,0,0,0,0,1,0,0,1,1,1,0,1,1],
+  [1,0,0,0,0,0,0,1,0,1,1,0,1,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,1,0,1,1,1,1,1,1,0,0,0,0,0,1],
+  [1,0,0,0,0,1,1,1,0,1,1,1,1,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,1,0,0,1,1,0,1,0,0,0,0,3,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+];
+
+const HARD_MAP: Level = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,3,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,1],
+  [1,0,0,0,0,0,1,0,1,1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,1,1,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,1,1,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,1,1,0,0,0,0,0,0,0,1],
+  [1,0,1,1,1,1,1,0,0,1,1,1,1,1,1,0,1,1,0,0,1,1,0,1,1,0,1],
+  [1,0,1,0,1,1,0,0,1,1,1,1,0,0,1,0,0,1,1,0,1,1,1,1,0,0,1],
+  [1,0,1,0,0,1,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,1],
+  [1,0,0,0,1,1,0,1,1,1,1,0,0,2,0,0,0,1,0,0,1,1,1,0,1,1,1],
+  [1,0,0,1,0,0,0,1,1,1,1,0,0,0,1,0,1,0,1,0,1,1,1,1,0,0,1],
+  [1,0,0,1,1,0,0,0,1,1,1,1,0,1,1,0,1,0,1,0,0,0,1,1,0,0,1],
+  [1,0,1,1,1,1,0,1,1,0,1,1,1,1,0,0,1,0,0,0,1,1,1,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,0,1,1,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,1,0,1,1,1,0,0,1,1,0,1,1,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,1,1,1,0,1,0,1,1,0,1,1,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,1,0,1,1,1,0,0,0,0,0,1,1,0,1,1,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,1,1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,3,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+];
 
 // --- Reachability & winnable grid -----------------------------------------
 
@@ -137,15 +164,7 @@ export function pickRespawnPosition(config: LevelConfig): Position | null {
 export const LEVELS: LevelConfig[] = [
   {
     name: "Level 1 — Easy",
-    map: buildMap(
-      15,
-      11,
-      [
-        { x: 1, y: 1 },
-        { x: 13, y: 9 },
-      ],
-      [{ x: 7, y: 5 }],
-    ),
+    map: EASY_MAP,
     playerStart: { x: 7, y: 5 },
     enemySpawnZones: [
       { minX: 1, maxX: 3, minY: 1, maxY: 3 },
@@ -159,15 +178,7 @@ export const LEVELS: LevelConfig[] = [
   },
   {
     name: "Level 2 — Moderate",
-    map: buildMap(
-      21,
-      15,
-      [
-        { x: 1, y: 1 },
-        { x: 19, y: 13 },
-      ],
-      [{ x: 10, y: 7 }],
-    ),
+    map: MODERATE_MAP,
     playerStart: { x: 10, y: 7 },
     enemySpawnZones: [
       { minX: 1, maxX: 4, minY: 1, maxY: 4 },
@@ -181,15 +192,7 @@ export const LEVELS: LevelConfig[] = [
   },
   {
     name: "Level 3 — Hard",
-    map: buildMap(
-      27,
-      19,
-      [
-        { x: 1, y: 1 },
-        { x: 25, y: 17 },
-      ],
-      [{ x: 13, y: 9 }],
-    ),
+    map: HARD_MAP,
     playerStart: { x: 13, y: 9 },
     enemySpawnZones: [
       { minX: 1, maxX: 5, minY: 1, maxY: 5 },
