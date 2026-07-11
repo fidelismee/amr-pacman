@@ -187,7 +187,6 @@ export const LEVELS: LevelConfig[] = [
       [
         { x: 1, y: 1 },
         { x: 25, y: 17 },
-        { x: 13, y: 9 },
       ],
       [{ x: 13, y: 9 }],
     ),
