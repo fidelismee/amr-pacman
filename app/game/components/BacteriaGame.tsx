@@ -295,8 +295,13 @@ const BacteriaGame = () => {
         if (!newLevel.flat().includes(0)) {
           stopAllLoops();
           playEffect('function');
-          setGameActive(false);
-          setGameMessage('🎉 Infection Spread! Bacteria Wins!');
+          setIsRunning(false);
+          if (currentLevelIndex < LEVELS.length - 1) {
+            setLevelComplete(true);
+          } else {
+            setGameActive(false);
+            setGameMessage('🎉 Infection Spread! You Win!');
+          }
         }
       } 
       // Eat Booster
@@ -531,9 +536,23 @@ const handleAnswer = (selected: string) => {
 
   const handleRestart = useCallback(() => {
     ensureAudioUnlocked();
-    initializeGame();
+    initializeLevel(currentLevelIndex, false); // restart current level, keep score
+    setHasFocus(true);
+  }, [ensureAudioUnlocked, currentLevelIndex, initializeLevel]);
+
+  const handleRestartFromStart = useCallback(() => {
+    ensureAudioUnlocked();
+    initializeGame(); // back to Level 1, score reset
     setHasFocus(true);
   }, [ensureAudioUnlocked, initializeGame]);
+
+  const handleAdvanceLevel = useCallback(() => {
+    ensureAudioUnlocked();
+    const nextIndex = currentLevelIndex + 1;
+    setCurrentLevelIndex(nextIndex);
+    initializeLevel(nextIndex, false); // keep cumulative score, reset lives to 3
+    setHasFocus(true);
+  }, [ensureAudioUnlocked, currentLevelIndex, initializeLevel]);
 
   // Initial Load
   useEffect(() => {
@@ -842,11 +861,22 @@ const handleAnswer = (selected: string) => {
                       </div>
                     </div>
                   )}
+                  {levelComplete && (
+                    <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-40">
+                      <div className="text-center">
+                        <h2 className="text-2xl font-bold mb-2 text-green-300">✅ Level Complete!</h2>
+                        <p className="text-sm text-gray-300 mb-4">
+                          {LEVELS[currentLevelIndex + 1]?.name ?? ''}
+                        </p>
+                        <button onClick={handleAdvanceLevel} className="px-6 py-2 bg-green-600 rounded font-bold">Next Level</button>
+                      </div>
+                    </div>
+                  )}
                   {!gameActive && (
                     <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-40">
                       <div className="text-center">
                         <h2 className="text-2xl font-bold mb-4 text-white">{gameMessage}</h2>
-                        <button onClick={handleRestart} className="px-6 py-2 bg-green-600 rounded font-bold">Try Again</button>
+                        <button onClick={handleRestartFromStart} className="px-6 py-2 bg-green-600 rounded font-bold">Try Again</button>
                       </div>
                     </div>
                   )}
@@ -861,6 +891,7 @@ const handleAnswer = (selected: string) => {
             {/* Stats Panel - More Compact */}
             <div className="bg-gray-800 p-2 rounded-lg border border-gray-700 game-stats-compact">
               <h3 className="text-sm font-bold mb-1 text-green-300 text-center">Game Stats</h3>
+              <div className="text-[10px] text-center text-gray-400 mb-1">{currentConfig.name}</div>
               <div className="flex justify-between mb-0.5">
                 <span className="text-gray-400 text-xs">Score</span>
                 <span className="text-lg font-bold text-green-400">{score}</span>
