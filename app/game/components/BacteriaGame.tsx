@@ -574,6 +574,11 @@ const handleAnswer = (selected: string) => {
   // Controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore game controls while the loading screen / intro cutscene is up.
+      // BacteriaGame stays mounted behind them, so without this Space during
+      // the intro also unlocked audio and toggled the game running unseen.
+      if (isLoading || showCutscene) return;
+
       // Dev/test cheat: Ctrl+Alt+1/2/3 jumps to that level (works any time).
       if (e.ctrlKey && e.altKey && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) {
         e.preventDefault();
@@ -597,11 +602,12 @@ const handleAnswer = (selected: string) => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleDirectionChange, handlePauseToggle, handleRestart, jumpToLevel, isRunning]);
+  }, [handleDirectionChange, handlePauseToggle, handleRestart, jumpToLevel, isRunning, isLoading, showCutscene]);
 
-  // Game Loop
+  // Game Loop — also paused while the loading screen / intro cutscene shows,
+  // otherwise the game silently plays (and loses lives) behind the intro.
   useEffect(() => {
-    if (!isRunning || !gameActive) return;
+    if (!isRunning || !gameActive || isLoading || showCutscene) return;
 
     const interval = setInterval(() => {
       // IMPORTANT: Store previous positions BEFORE movement for crossing collision detection
@@ -627,7 +633,7 @@ const handleAnswer = (selected: string) => {
     }, 200);
 
     return () => clearInterval(interval);
-  }, [isRunning, gameActive, bacteriaPosition, antibioticPositions, poweredUp, level, currentLevelIndex]);
+  }, [isRunning, gameActive, isLoading, showCutscene, bacteriaPosition, antibioticPositions, poweredUp, level, currentLevelIndex]);
 
   // Helpers
   const remainingNutrients = level.flat().filter(cell => cell === 0).length;
