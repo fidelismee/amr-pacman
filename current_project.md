@@ -3,7 +3,9 @@
 ## 2026-07-11 — Three-level difficulty progression
 
 Added sequential difficulty levels (Easy → Moderate → Hard), played in order:
-- **Larger maps per level** (15×11 → 21×15 → 27×19): three unique, hand-crafted asymmetric "open arena" layouts of increasing size and wall density, each verified fully connected. A flood-fill loader (`buildLevelState`) strips any unreachable dot, so no level is unwinnable.
+- **Larger maps per level** (15×11 → 21×15 → 27×19): three unique Pac-Man-style corridor mazes (one-tile-wide paths, no open blocks) of increasing size and complexity, each verified fully connected. A flood-fill loader (`buildLevelState`) strips any unreachable dot, so no level is unwinnable.
+- **Intro cutscene navigation**: Back button, arrow-key nav (←/→), and clickable progress dots so players can revisit scenes they skipped past.
+- **Dev cheat**: Ctrl+Alt+1/2/3 jumps straight to a level for testing.
 - **Scaling antibiotic chase AI** (`app/game/ai/antibioticMovement.ts`): `wander` (Easy) → `hunt` (Moderate) → `pursue` (Hard, BFS shortest-path chase toward the bacteria).
 - **Level-based quiz tiers** (`app/game/quiz/difficulty.ts`): each level sets a baseline question difficulty, raised further as lives are lost.
 - Lives reset to 3 each level; score is cumulative. Clearing Level 3 wins; losing all lives restarts from Level 1.
