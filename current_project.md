@@ -1,5 +1,9 @@
 # AMR Pacman Game - Project Documentation
 
+## 2026-07-12 — Smooth entity movement
+
+Entities (bacteria and antibiotics) are now positioned with a compositor-friendly `transform: translate3d` plus a `transform 200ms linear` CSS transition (`GlidingEntity` wrapper in `BacteriaGame.tsx`) instead of `left`/`top`. The game logic still ticks every 200 ms, but the browser interpolates each one-cell move at the display's refresh rate, so movement glides instead of snapping tile-to-tile. Jumps larger than one cell (death/quiz reset, respawn, enemy index shift after an eat) deliberately skip the transition so entities don't slide across the board.
+
 ## 2026-07-11 — Three-level difficulty progression
 
 Added sequential difficulty levels (Easy → Moderate → Hard), played in order:

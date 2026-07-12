@@ -4,7 +4,7 @@
 
 import LoadingScreen from './Loading_Screen'; 
 import Cutscene from './cutscene'; 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, type CSSProperties, type ReactNode } from 'react';
 import Image from 'next/image';
 import { usePlatform, useShouldShowTouchControls, useShouldShowKeyboardInstructions } from '../../contexts/PlatformContext';
 import TouchController from '../../components/TouchController';
@@ -29,6 +29,51 @@ import { getEffectiveTier } from '../quiz/difficulty';
 const CELL_SIZE = 24;
 const POWER_UP_DURATION = 5000;
 const INITIAL_ENEMY_DIRECTIONS: Direction[] = ['right', 'left', 'up', 'down'];
+
+// Positions an entity with a transitioned transform so single-cell moves glide
+// between tiles instead of snapping once per 200 ms game tick. Transform runs
+// on the compositor (no layout), unlike the previous left/top positioning.
+// Jumps larger than one cell (death reset, respawn, index shift after an eat)
+// render without the transition so entities don't slide across the board.
+const GlidingEntity = ({
+  x,
+  y,
+  cellSize,
+  style,
+  children,
+}: {
+  x: number;
+  y: number;
+  cellSize: number;
+  style?: CSSProperties;
+  children: ReactNode;
+}) => {
+  const prevCellRef = useRef({ x, y });
+  const jumped =
+    Math.abs(x - prevCellRef.current.x) + Math.abs(y - prevCellRef.current.y) > 1;
+  useEffect(() => {
+    prevCellRef.current = { x, y };
+  });
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        width: `${cellSize}px`,
+        height: `${cellSize}px`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transform: `translate3d(${x * cellSize}px, ${y * cellSize}px, 0)`,
+        transition: jumped ? 'none' : 'transform 200ms linear',
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+};
 
 const BacteriaGame = () => {
   // Platform detection
@@ -792,49 +837,41 @@ const handleAnswer = (selected: string) => {
                     
                     {/* Player (Bacteria) */}
                     {bacteriaInstance && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          left: `${bacteriaPosition.x * responsiveCellSize}px`,
-                          top: `${bacteriaPosition.y * responsiveCellSize}px`,
-                          width: `${responsiveCellSize}px`,
-                          height: `${responsiveCellSize}px`,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
+                      <GlidingEntity
+                        x={bacteriaPosition.x}
+                        y={bacteriaPosition.y}
+                        cellSize={responsiveCellSize}
                       >
                         <BacteriaRenderer
                           bacteria={bacteriaInstance}
                           scale={responsiveCellSize / 32}
                         />
-                      </div>
+                      </GlidingEntity>
                     )}
 
                     {/* Enemies (Antibiotics) */}
-                    {antibioticInstances.map((antibiotic, index) => (
-                      <div
-                        key={`enemy-${index}`}
-                        style={{
-                          position: 'absolute',
-                          left: `${antibioticPositions[index]?.x * responsiveCellSize}px`,
-                          top: `${antibioticPositions[index]?.y * responsiveCellSize}px`,
-                          width: `${responsiveCellSize}px`,
-                          height: `${responsiveCellSize}px`,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          opacity: poweredUp ? 0.5 : 1,
-                          filter: poweredUp ? 'grayscale(100%)' : 'none',
-                          zIndex: 20
-                        }}
-                      >
-                        <AntibioticRenderer
-                          antibiotic={antibiotic}
-                          scale={responsiveCellSize / 32}
-                        />
-                      </div>
-                    ))}
+                    {antibioticInstances.map((antibiotic, index) => {
+                      const pos = antibioticPositions[index];
+                      if (!pos) return null;
+                      return (
+                        <GlidingEntity
+                          key={`enemy-${index}`}
+                          x={pos.x}
+                          y={pos.y}
+                          cellSize={responsiveCellSize}
+                          style={{
+                            opacity: poweredUp ? 0.5 : 1,
+                            filter: poweredUp ? 'grayscale(100%)' : 'none',
+                            zIndex: 20,
+                          }}
+                        >
+                          <AntibioticRenderer
+                            antibiotic={antibiotic}
+                            scale={responsiveCellSize / 32}
+                          />
+                        </GlidingEntity>
+                      );
+                    })}
                   </div>
 
                   {/* Overlays */}
