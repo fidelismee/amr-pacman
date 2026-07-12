@@ -13,12 +13,15 @@ const Cutscene = ({ onFinished }: CutsceneProps) => {
   const totalSteps = 18;
 
   const handleNext = useCallback(() => {
-    setCurrentStep(prev => {
-      if (prev < totalSteps) return prev + 1;
+    // Note: don't call onFinished() inside the setCurrentStep updater —
+    // updaters run during render, and setState on the parent there triggers
+    // React's "cannot update a component while rendering" error.
+    if (currentStep < totalSteps) {
+      setCurrentStep(currentStep + 1);
+    } else {
       onFinished();
-      return prev;
-    });
-  }, [onFinished]);
+    }
+  }, [currentStep, onFinished]);
 
   const handleBack = useCallback(() => {
     setCurrentStep(prev => Math.max(1, prev - 1));
