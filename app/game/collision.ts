@@ -1,14 +1,12 @@
 // app/game/collision.ts
 // Pure collision detection between the bacterium and the antibiotics.
 //
-// On a grid where everything moves one cell per tick, two entities collide in
-// exactly two cases:
-//   1. They end the tick on the same cell.
-//   2. They swap cells (each moves into the other's previous cell) — passing
-//      "through" each other without ever sharing a cell.
-// The previous inline implementation also flagged parallel movement and one
-// entity stepping into the other's vacated cell, which produced deaths where
-// the two never actually touched. Those cases are intentionally NOT collisions.
+// This mirrors the game's original, deliberately aggressive detection: a hit is
+// registered not only when the two share a cell or cleanly swap, but also when
+// one steps into the other's just-vacated cell or when they pass while adjacent.
+// The wider net stops enemies from appearing to slip past the player through
+// tight one-tile corridors, which matters more here than the occasional
+// near-miss being counted as a catch.
 
 import type { Position } from "./types";
 
@@ -17,8 +15,8 @@ const samePos = (a: Position, b: Position): boolean =>
 
 /**
  * Returns the indices of antibiotics that collided with the bacterium this
- * tick. Positions are post-move; `prev*` are the positions before the move
- * (used to detect swaps). Indices are aligned to the `antibiotics` array.
+ * tick. Positions are post-move; `prev*` are the positions before the move.
+ * Indices are aligned to the `antibiotics` array.
  */
 export function detectCollisions(
   bacteria: Position,
@@ -27,14 +25,52 @@ export function detectCollisions(
   prevAntibiotics: Position[],
 ): number[] {
   const hits: number[] = [];
+
   antibiotics.forEach((anti, index) => {
     const prevAnti = prevAntibiotics[index];
-    const occupiesSameCell = samePos(anti, bacteria);
-    const swapped =
+
+    // 1. Bacteria and antibiotic occupy the same cell now.
+    const isSamePosition = samePos(anti, bacteria);
+
+    // 2. They swapped cells this tick (crossing / passing through).
+    const isCrossingCollision =
       prevAnti != null &&
       samePos(bacteria, prevAnti) &&
       samePos(anti, prevBacteria);
-    if (occupiesSameCell || swapped) hits.push(index);
+
+    // 3. Bacteria moved into the antibiotic's previous cell.
+    const bacteriaMovedIntoAntibioticOldPos =
+      prevAnti != null && samePos(bacteria, prevAnti);
+
+    // 4. Antibiotic moved into the bacteria's previous cell.
+    const antibioticMovedIntoBacteriaOldPos =
+      prevAnti != null && samePos(anti, prevBacteria);
+
+    // 5. They were adjacent and both moved (passing collision).
+    let isPassingCollision = false;
+    if (prevAnti != null) {
+      const prevDistance =
+        Math.abs(prevBacteria.x - prevAnti.x) +
+        Math.abs(prevBacteria.y - prevAnti.y);
+      if (prevDistance === 1) {
+        const bacteriaMovedAway = !samePos(bacteria, prevBacteria);
+        const antibioticMovedAway = !samePos(anti, prevAnti);
+        if (bacteriaMovedAway && antibioticMovedAway) {
+          isPassingCollision = true;
+        }
+      }
+    }
+
+    if (
+      isSamePosition ||
+      isCrossingCollision ||
+      bacteriaMovedIntoAntibioticOldPos ||
+      antibioticMovedIntoBacteriaOldPos ||
+      isPassingCollision
+    ) {
+      hits.push(index);
+    }
   });
+
   return hits;
 }
