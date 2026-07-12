@@ -574,6 +574,11 @@ const handleAnswer = (selected: string) => {
   // Controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore game controls while the loading screen / intro cutscene is up.
+      // BacteriaGame stays mounted behind them, so without this Space during
+      // the intro also unlocked audio and toggled the game running unseen.
+      if (isLoading || showCutscene) return;
+
       // Dev/test cheat: Ctrl+Alt+1/2/3 jumps to that level (works any time).
       if (e.ctrlKey && e.altKey && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) {
         e.preventDefault();
@@ -597,11 +602,12 @@ const handleAnswer = (selected: string) => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleDirectionChange, handlePauseToggle, handleRestart, jumpToLevel, isRunning]);
+  }, [handleDirectionChange, handlePauseToggle, handleRestart, jumpToLevel, isRunning, isLoading, showCutscene]);
 
-  // Game Loop
+  // Game Loop — also paused while the loading screen / intro cutscene shows,
+  // otherwise the game silently plays (and loses lives) behind the intro.
   useEffect(() => {
-    if (!isRunning || !gameActive) return;
+    if (!isRunning || !gameActive || isLoading || showCutscene) return;
 
     const interval = setInterval(() => {
       // IMPORTANT: Store previous positions BEFORE movement for crossing collision detection
@@ -627,7 +633,7 @@ const handleAnswer = (selected: string) => {
     }, 200);
 
     return () => clearInterval(interval);
-  }, [isRunning, gameActive, bacteriaPosition, antibioticPositions, poweredUp, level, currentLevelIndex]);
+  }, [isRunning, gameActive, isLoading, showCutscene, bacteriaPosition, antibioticPositions, poweredUp, level, currentLevelIndex]);
 
   // Helpers
   const remainingNutrients = level.flat().filter(cell => cell === 0).length;
@@ -723,15 +729,14 @@ const handleAnswer = (selected: string) => {
           </div>
         )}
         
-<header className="text-center mt-16 mb-0">
-  <img
-    src="/AMR-Busters.png" 
-    alt="AMR Busters Banner"
-     className="w-full max-w-xs mx-auto -translate-x-24 relative"
-  />
-</header>
+{/* No banner header: AMR-Busters.png is a tall 884x1141 logo that pushed the
+    board below the fold (the background art already shows the game title).
+    Keeping the header out lets the game fit on screen without scrolling. */}
 
-        <div className="flex flex-col md:flex-row gap-1 md:gap-2 items-start">
+        {/* my-auto vertically centers the game in the leftover space (auto
+            margins collapse to 0 when content overflows, so short screens
+            still scroll normally — unlike justify-center, which clips). */}
+        <div className="flex flex-col md:flex-row gap-1 md:gap-2 items-start my-auto">
           <div className="flex-1 w-full flex flex-col items-center">
             <div className="flex justify-center items-center w-full overflow-hidden py-1 md:py-2 game-board-landscape" ref={boardRef}>
               <div className="relative" style={{ width: responsiveBoardWidth, height: responsiveBoardHeight }}>
@@ -834,9 +839,12 @@ const handleAnswer = (selected: string) => {
 
                   {/* Overlays */}
                   {/* Only show "Click to Focus" for desktop browsers (not PWA/mobile) */}
+                  {/* Question overlay is `fixed` (viewport-level): the board
+                      container is small on Easy/Moderate maps and has
+                      overflow-hidden, which clipped the quiz panel. */}
                   {showQuestion && currentQuestion && (
-  <div className="absolute inset-0 bg-black/85 flex items-center justify-center z-50">
-    <div className="bg-gray-800 border-2 border-green-500 rounded-xl p-6 w-[90%] max-w-xl shadow-2xl">
+  <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-[90] p-4">
+    <div className="bg-gray-800 border-2 border-green-500 rounded-xl p-6 w-[90%] max-w-xl max-h-[85vh] overflow-y-auto shadow-2xl">
       <h2 className="text-xl font-bold text-green-300 mb-4 text-center">
         🧪 AMR Challenge
       </h2>
@@ -881,7 +889,7 @@ const handleAnswer = (selected: string) => {
                     </div>
                   )}
                   {levelComplete && (
-                    <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-40">
+                    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[80] p-4">
                       <div className="text-center">
                         <h2 className="text-2xl font-bold mb-2 text-green-300">✅ Level Complete!</h2>
                         <p className="text-sm text-gray-300 mb-4">
@@ -892,7 +900,7 @@ const handleAnswer = (selected: string) => {
                     </div>
                   )}
                   {!gameActive && (
-                    <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-40">
+                    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[80] p-4">
                       <div className="text-center">
                         <h2 className="text-2xl font-bold mb-4 text-white">{gameMessage}</h2>
                         <button onClick={handleRestartFromStart} className="px-6 py-2 bg-green-600 rounded font-bold">Try Again</button>
