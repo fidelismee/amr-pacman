@@ -1,5 +1,10 @@
 # AMR Pacman Game - Project Documentation
 
+## 2026-07-12 — Keep position on correct answer; no repeating quiz questions
+
+- **Answering correctly keeps your position**: instead of teleporting the bacterium back to the level start on every quiz, a correct answer now leaves it (and its heading) where it was caught. The antibiotics are still sent back to their spawn zones on both correct and wrong answers, so the enemy that triggered the question can't instantly re-catch you. A wrong answer still resets the bacterium to the level start and costs a life.
+- **Questions no longer repeat**: `triggerQuestion` tracks which questions have been shown (by text, in `askedQuestionsRef`) and prefers unseen ones, only clearing a tier's record once every question in it has appeared. The record is cleared on a full game restart.
+
 ## 2026-07-12 — Collision, focus, and restart fixes
 
 Fixed a batch of gameplay flaws found during an inspection of `BacteriaGame.tsx`:
