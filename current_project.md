@@ -3,7 +3,7 @@
 ## 2026-07-12 — Collision, focus, and restart fixes
 
 Fixed a batch of gameplay flaws found during an inspection of `BacteriaGame.tsx`:
-- **Phantom deaths**: collision detection was extracted into a pure, unit-tested module (`app/game/collision.ts` + `collision.test.ts`). It now counts only the two real cases — sharing a cell, or a clean swap — instead of the previous five conditions, three of which (parallel movement, following an enemy into its vacated cell, an enemy entering the player's vacated cell) killed the player when the two never actually touched.
+- **Collision detection** was extracted into a pure, unit-tested module (`app/game/collision.ts` + `collision.test.ts`), preserving the game's original aggressive behavior: a hit registers on same-cell, clean swap, one entity moving into the other's just-vacated cell, or two adjacent entities both moving (passing). The wider net stops enemies from appearing to slip past the player through one-tile corridors.
 - **Multi-eat index bug**: eating several antibiotics in one powered-up tick removed them in a single pass keyed by an index set, instead of per-enemy `filter`s that shifted later indices and desynced the direction ref.
 - **Single quiz per hit**: simultaneous non-powered hits now trigger one quiz instead of calling `triggerQuestion()` per enemy.
 - **No self-play before focus**: the game loop is now gated on `hasFocus`, so on desktop the bacterium no longer auto-runs and loses lives behind the "Click to Focus" overlay.
