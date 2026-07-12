@@ -23,6 +23,7 @@ import {
 } from '../levels';
 import type { Direction, Position, Level } from '../types';
 import { computeAntibioticMoves } from '../ai/antibioticMovement';
+import { detectCollisions } from '../collision';
 import { getEffectiveTier } from '../quiz/difficulty';
 
 // Constants
@@ -392,84 +393,49 @@ const BacteriaGame = () => {
   const prevAntibioticPositionsRef = useRef<Position[]>([]);
 
   const checkCollisions = () => {
-    // Create a copy of antibioticPositions to avoid mutation during iteration
-    const currentAntibiotics = [...antibioticPositionsRef.current];
-    const currentBacteriaPos = bacteriaPositionRef.current;
-    const prevBacteriaPos = prevBacteriaPositionRef.current;
-    const prevAntibiotics = prevAntibioticPositionsRef.current;
-    
-    // Use ref to get the CURRENT powered-up state (avoids stale closure)
-    // Also check justCollectedBoosterRef for same-tick booster collection
-    const isPoweredUp = poweredUpRef.current || justCollectedBoosterRef.current;
-    
-    currentAntibiotics.forEach((antibiotic, index) => {
-      const prevAntibioticPos = prevAntibiotics[index];
-      
-      // SIMPLIFIED COLLISION DETECTION:
-      // 1. Check if bacteria and antibiotic are at the same position NOW
-      const isSamePosition = antibiotic.x === currentBacteriaPos.x && antibiotic.y === currentBacteriaPos.y;
-      
-      // 2. Check if they swapped positions (crossing collision)
-      const isCrossingCollision = prevAntibioticPos && (
-        currentBacteriaPos.x === prevAntibioticPos.x && 
-        currentBacteriaPos.y === prevAntibioticPos.y &&
-        antibiotic.x === prevBacteriaPos.x && 
-        antibiotic.y === prevBacteriaPos.y
-      );
-      
-      // 3. Check if bacteria moved into antibiotic's previous position
-      const bacteriaMovedIntoAntibioticOldPos = prevAntibioticPos && (
-        currentBacteriaPos.x === prevAntibioticPos.x && currentBacteriaPos.y === prevAntibioticPos.y
-      );
-      
-      // 4. Check if antibiotic moved into bacteria's previous position
-      const antibioticMovedIntoBacteriaOldPos = prevAntibioticPos && (
-        antibiotic.x === prevBacteriaPos.x && antibiotic.y === prevBacteriaPos.y
-      );
-      
-      // 5. Check if they were adjacent and both moved (passing collision)
-      let isPassingCollision = false;
-      if (prevAntibioticPos) {
-        // Calculate Manhattan distance between previous positions
-        const prevDistance = Math.abs(prevBacteriaPos.x - prevAntibioticPos.x) + Math.abs(prevBacteriaPos.y - prevAntibioticPos.y);
-        
-        // If they were adjacent (distance = 1) and both moved
-        if (prevDistance === 1) {
-          // Check if bacteria moved away from antibiotic's old position
-          const bacteriaMovedAway = currentBacteriaPos.x !== prevBacteriaPos.x || currentBacteriaPos.y !== prevBacteriaPos.y;
-          const antibioticMovedAway = antibiotic.x !== prevAntibioticPos.x || antibiotic.y !== prevAntibioticPos.y;
-          
-          // If both moved, it's a passing collision
-          if (bacteriaMovedAway && antibioticMovedAway) {
-            isPassingCollision = true;
-          }
-        }
-      }
-      
-      // COLLISION DETECTION - ANY of these conditions means a collision occurred
-      if (isSamePosition || isCrossingCollision || bacteriaMovedIntoAntibioticOldPos || 
-          antibioticMovedIntoBacteriaOldPos || isPassingCollision) {
-        if (isPoweredUp) {
-          // Eat Enemy - Remove temporarily and respawn after delay
-          setAntibioticPositions(prev => prev.filter((a, i) => i !== index));
-          setAntibioticInstances(prev => prev.filter((_, i) => i !== index));
-          antibioticDirectionsRef.current = antibioticDirectionsRef.current.filter((_, i) => i !== index);
-          setScore(prev => prev + 100);
-          playMovementEffect();
+    const hits = detectCollisions(
+      bacteriaPositionRef.current,
+      prevBacteriaPositionRef.current,
+      antibioticPositionsRef.current,
+      prevAntibioticPositionsRef.current,
+    );
+    if (hits.length === 0) return;
 
-          // Respawn the antibiotic in a configured spawn zone after 3 seconds
-          setTimeout(() => {
-            const respawnPos = pickRespawnPosition(currentConfig);
-            if (!respawnPos) return;
-            antibioticDirectionsRef.current = [...antibioticDirectionsRef.current, 'right'];
-            setAntibioticPositions(prev => [...prev, respawnPos]);
-          }, 3000); // 3 second respawn delay
-        } else {
-          // Die
-          playEffect('function');
-          triggerQuestion();
-        }
-      }
+    // Use refs for the CURRENT powered-up state (avoids stale closure).
+    // justCollectedBoosterRef covers a booster eaten on the same tick.
+    const isPoweredUp = poweredUpRef.current || justCollectedBoosterRef.current;
+
+    if (!isPoweredUp) {
+      // Any hit ends the run in one quiz — trigger it once, not per enemy.
+      playEffect('function');
+      triggerQuestion();
+      return;
+    }
+
+    // Powered up: eat every enemy hit this tick. Remove them in a single pass
+    // using a set of indices, so earlier removals don't shift the indices of
+    // later ones (which the old per-enemy filter got wrong).
+    const eaten = new Set(hits);
+    setAntibioticPositions(prev => prev.filter((_, i) => !eaten.has(i)));
+    setAntibioticInstances(prev => prev.filter((_, i) => !eaten.has(i)));
+    antibioticDirectionsRef.current = antibioticDirectionsRef.current.filter(
+      (_, i) => !eaten.has(i),
+    );
+    antibioticPositionsRef.current = antibioticPositionsRef.current.filter(
+      (_, i) => !eaten.has(i),
+    );
+    setScore(prev => prev + 100 * eaten.size);
+    playMovementEffect();
+
+    // Respawn one enemy per eaten enemy in a configured spawn zone after 3s.
+    eaten.forEach(() => {
+      setTimeout(() => {
+        const respawnPos = pickRespawnPosition(currentConfig);
+        if (!respawnPos) return;
+        antibioticDirectionsRef.current = [...antibioticDirectionsRef.current, 'right'];
+        antibioticPositionsRef.current = [...antibioticPositionsRef.current, respawnPos];
+        setAntibioticPositions(prev => [...prev, respawnPos]);
+      }, 3000);
     });
   };
 
@@ -535,6 +501,11 @@ const handleAnswer = (selected: string) => {
     setBacteriaPosition(config.playerStart);
     setAntibioticPositions(spawns);
     antibioticDirectionsRef.current = spawns.map(() => 'right');
+
+    // Reset the player's heading so a restarted level doesn't inherit the
+    // previous run's direction and immediately walk off.
+    currentDirectionRef.current = 'right';
+    nextDirectionRef.current = null;
 
     bacteriaPositionRef.current = config.playerStart;
     antibioticPositionsRef.current = spawns;
@@ -652,7 +623,10 @@ const handleAnswer = (selected: string) => {
   // Game Loop — also paused while the loading screen / intro cutscene shows,
   // otherwise the game silently plays (and loses lives) behind the intro.
   useEffect(() => {
-    if (!isRunning || !gameActive || isLoading || showCutscene) return;
+    // Also gated on hasFocus so the game doesn't play itself (auto-moving and
+    // losing lives) behind the "Click to Focus" overlay before the player has
+    // interacted. On PWA/mobile hasFocus starts true, so play begins normally.
+    if (!isRunning || !gameActive || isLoading || showCutscene || !hasFocus) return;
 
     const interval = setInterval(() => {
       // IMPORTANT: Store previous positions BEFORE movement for crossing collision detection
@@ -678,11 +652,18 @@ const handleAnswer = (selected: string) => {
     }, 200);
 
     return () => clearInterval(interval);
-  }, [isRunning, gameActive, isLoading, showCutscene, bacteriaPosition, antibioticPositions, poweredUp, level, currentLevelIndex]);
+  }, [isRunning, gameActive, isLoading, showCutscene, hasFocus, bacteriaPosition, antibioticPositions, poweredUp, level, currentLevelIndex]);
 
-  // Helpers
-  const remainingNutrients = level.flat().filter(cell => cell === 0).length;
-  const remainingBoosters = level.flat().filter(cell => cell === 3).length;
+  // Helpers — count nutrients and boosters in a single pass over the grid
+  // rather than flattening it twice per render.
+  let remainingNutrients = 0;
+  let remainingBoosters = 0;
+  for (const row of level) {
+    for (const cell of row) {
+      if (cell === 0) remainingNutrients++;
+      else if (cell === 3) remainingBoosters++;
+    }
+  }
 
   const getBacteriaRotation = () => {
     switch (currentDirectionRef.current) {
