@@ -729,13 +729,9 @@ const handleAnswer = (selected: string) => {
           </div>
         )}
         
-<header className="text-center mt-16 mb-0">
-  <img
-    src="/AMR-Busters.png" 
-    alt="AMR Busters Banner"
-     className="w-full max-w-xs mx-auto -translate-x-24 relative"
-  />
-</header>
+{/* No banner header: AMR-Busters.png is a tall 884x1141 logo that pushed the
+    board below the fold (the background art already shows the game title).
+    Keeping the header out lets the game fit on screen without scrolling. */}
 
         <div className="flex flex-col md:flex-row gap-1 md:gap-2 items-start">
           <div className="flex-1 w-full flex flex-col items-center">
