@@ -733,7 +733,10 @@ const handleAnswer = (selected: string) => {
     board below the fold (the background art already shows the game title).
     Keeping the header out lets the game fit on screen without scrolling. */}
 
-        <div className="flex flex-col md:flex-row gap-1 md:gap-2 items-start">
+        {/* my-auto vertically centers the game in the leftover space (auto
+            margins collapse to 0 when content overflows, so short screens
+            still scroll normally — unlike justify-center, which clips). */}
+        <div className="flex flex-col md:flex-row gap-1 md:gap-2 items-start my-auto">
           <div className="flex-1 w-full flex flex-col items-center">
             <div className="flex justify-center items-center w-full overflow-hidden py-1 md:py-2 game-board-landscape" ref={boardRef}>
               <div className="relative" style={{ width: responsiveBoardWidth, height: responsiveBoardHeight }}>
