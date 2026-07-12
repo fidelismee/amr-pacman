@@ -1,5 +1,19 @@
 # AMR Pacman Game - Project Documentation
 
+## 2026-07-12 — Collision, focus, and restart fixes
+
+Fixed a batch of gameplay flaws found during an inspection of `BacteriaGame.tsx`:
+- **Phantom deaths**: collision detection was extracted into a pure, unit-tested module (`app/game/collision.ts` + `collision.test.ts`). It now counts only the two real cases — sharing a cell, or a clean swap — instead of the previous five conditions, three of which (parallel movement, following an enemy into its vacated cell, an enemy entering the player's vacated cell) killed the player when the two never actually touched.
+- **Multi-eat index bug**: eating several antibiotics in one powered-up tick removed them in a single pass keyed by an index set, instead of per-enemy `filter`s that shifted later indices and desynced the direction ref.
+- **Single quiz per hit**: simultaneous non-powered hits now trigger one quiz instead of calling `triggerQuestion()` per enemy.
+- **No self-play before focus**: the game loop is now gated on `hasFocus`, so on desktop the bacterium no longer auto-runs and loses lives behind the "Click to Focus" overlay.
+- **Restart heading reset**: `initializeLevel` now clears `currentDirectionRef`/`nextDirectionRef` so a restarted level doesn't inherit the previous run's direction.
+- **Render micro-opt**: nutrient/booster counts are computed in a single grid pass instead of flattening the grid twice per render.
+
+## 2026-07-12 — Smooth entity movement
+
+Entities (bacteria and antibiotics) are now positioned with a compositor-friendly `transform: translate3d` plus a `transform 200ms linear` CSS transition (`GlidingEntity` wrapper in `BacteriaGame.tsx`) instead of `left`/`top`. The game logic still ticks every 200 ms, but the browser interpolates each one-cell move at the display's refresh rate, so movement glides instead of snapping tile-to-tile. Jumps larger than one cell (death/quiz reset, respawn, enemy index shift after an eat) deliberately skip the transition so entities don't slide across the board.
+
 ## 2026-07-11 — Three-level difficulty progression
 
 Added sequential difficulty levels (Easy → Moderate → Hard), played in order:
