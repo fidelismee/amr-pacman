@@ -840,9 +840,12 @@ const handleAnswer = (selected: string) => {
 
                   {/* Overlays */}
                   {/* Only show "Click to Focus" for desktop browsers (not PWA/mobile) */}
+                  {/* Question overlay is `fixed` (viewport-level): the board
+                      container is small on Easy/Moderate maps and has
+                      overflow-hidden, which clipped the quiz panel. */}
                   {showQuestion && currentQuestion && (
-  <div className="absolute inset-0 bg-black/85 flex items-center justify-center z-50">
-    <div className="bg-gray-800 border-2 border-green-500 rounded-xl p-6 w-[90%] max-w-xl shadow-2xl">
+  <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-[90] p-4">
+    <div className="bg-gray-800 border-2 border-green-500 rounded-xl p-6 w-[90%] max-w-xl max-h-[85vh] overflow-y-auto shadow-2xl">
       <h2 className="text-xl font-bold text-green-300 mb-4 text-center">
         🧪 AMR Challenge
       </h2>
@@ -887,7 +890,7 @@ const handleAnswer = (selected: string) => {
                     </div>
                   )}
                   {levelComplete && (
-                    <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-40">
+                    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[80] p-4">
                       <div className="text-center">
                         <h2 className="text-2xl font-bold mb-2 text-green-300">✅ Level Complete!</h2>
                         <p className="text-sm text-gray-300 mb-4">
@@ -898,7 +901,7 @@ const handleAnswer = (selected: string) => {
                     </div>
                   )}
                   {!gameActive && (
-                    <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-40">
+                    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[80] p-4">
                       <div className="text-center">
                         <h2 className="text-2xl font-bold mb-4 text-white">{gameMessage}</h2>
                         <button onClick={handleRestartFromStart} className="px-6 py-2 bg-green-600 rounded font-bold">Try Again</button>
