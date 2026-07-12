@@ -392,6 +392,10 @@ const BacteriaGame = () => {
   const prevBacteriaPositionRef = useRef<Position>(LEVELS[0].playerStart);
   const prevAntibioticPositionsRef = useRef<Position[]>([]);
 
+  // Tracks which questions have already been shown (by text) so the quiz
+  // doesn't keep repeating the same ones. Reset per tier once exhausted.
+  const askedQuestionsRef = useRef<Set<string>>(new Set());
+
   const checkCollisions = () => {
     const hits = detectCollisions(
       bacteriaPositionRef.current,
@@ -441,15 +445,20 @@ const BacteriaGame = () => {
 
 const triggerQuestion = () => {
   const difficulty = getEffectiveTier(currentConfig.baseTier, lives);
+  const pool = questions.filter(q => q.difficulty === difficulty);
 
-  const filtered = questions.filter(
-    q => q.difficulty === difficulty
-  );
+  // Prefer questions not asked yet. Once every question in this tier has been
+  // shown, clear those from the record and start the tier's cycle over.
+  let unseen = pool.filter(q => !askedQuestionsRef.current.has(q.question));
+  if (unseen.length === 0) {
+    pool.forEach(q => askedQuestionsRef.current.delete(q.question));
+    unseen = pool;
+  }
 
-  const randomQuestion =
-    filtered[Math.floor(Math.random() * filtered.length)];
+  const chosen = unseen[Math.floor(Math.random() * unseen.length)];
+  if (chosen) askedQuestionsRef.current.add(chosen.question);
 
-  setCurrentQuestion(randomQuestion);
+  setCurrentQuestion(chosen ?? null);
   setShowQuestion(true);
   setIsRunning(false);
 };
@@ -487,10 +496,26 @@ const handleAnswer = (selected: string) => {
     setFeedback(null);
   }, 1000);
 
-  // reset positions
-  setBacteriaPosition(currentConfig.playerStart);
-  setAntibioticPositions(generateScatteredPositions());
-  antibioticDirectionsRef.current = [...INITIAL_ENEMY_DIRECTIONS];
+  // Always send the antibiotics back to their spawn zones so the player isn't
+  // instantly re-caught by the enemy that triggered the question.
+  const spawns = generateScatteredPositions();
+  setAntibioticPositions(spawns);
+  antibioticPositionsRef.current = spawns;
+  antibioticDirectionsRef.current = spawns.map(() => 'right');
+  prevAntibioticPositionsRef.current = spawns.map(pos => ({ ...pos }));
+
+  if (correct) {
+    // Answered correctly: keep the bacterium where it was caught (and its
+    // heading) instead of teleporting back to the level start.
+    prevBacteriaPositionRef.current = { ...bacteriaPositionRef.current };
+  } else {
+    // Wrong answer: reset the bacterium to the level start.
+    setBacteriaPosition(currentConfig.playerStart);
+    bacteriaPositionRef.current = { ...currentConfig.playerStart };
+    prevBacteriaPositionRef.current = { ...currentConfig.playerStart };
+    currentDirectionRef.current = 'right';
+    nextDirectionRef.current = null;
+  }
 };
   const initializeLevel = useCallback((index: number, resetScore: boolean) => {
     const config = LEVELS[index];
@@ -526,6 +551,7 @@ const handleAnswer = (selected: string) => {
 
   const initializeGame = useCallback(() => {
     setCurrentLevelIndex(0);
+    askedQuestionsRef.current.clear(); // fresh game: allow all questions again
     initializeLevel(0, true);
   }, [initializeLevel]);
 
