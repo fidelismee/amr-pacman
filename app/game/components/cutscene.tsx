@@ -6,11 +6,31 @@ interface CutsceneProps {
   onFinished: () => void;
 }
 
-// Inside app/game/components/Cutscene.tsx
+const SCENE_FILES = [
+  'scene_1.png',
+  'scene_2.png',
+  'scene_3.png',
+  'scene_4.png',
+  'scene_5.png',
+  'scene_6.png',
+  'scene_7.png',
+  'scene_8.png',
+  'scene_9.png', 
+  'scene_10.png',
+  'scene_11.png',
+  'scene_12.png',
+  'scene_13.png',
+  'scene_14.png',
+  'scene_15.png',
+  'scene_16.png',
+  'scene_17.png',
+  'scene_18.png',
+  'scene_19.png'
+];
 
 const Cutscene = ({ onFinished }: CutsceneProps) => {
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 18;
+  const totalSteps = SCENE_FILES.length;
 
   const handleNext = useCallback(() => {
     // Note: don't call onFinished() inside the setCurrentStep updater —
@@ -21,7 +41,7 @@ const Cutscene = ({ onFinished }: CutsceneProps) => {
     } else {
       onFinished();
     }
-  }, [currentStep, onFinished]);
+  }, [currentStep, totalSteps, onFinished]);
 
   const handleBack = useCallback(() => {
     setCurrentStep(prev => Math.max(1, prev - 1));
@@ -50,7 +70,7 @@ const Cutscene = ({ onFinished }: CutsceneProps) => {
       {/* The Story Image */}
       <div className="relative w-full h-full max-w-5xl max-h-[85vh] aspect-video animate-in fade-in duration-700">
         <Image
-          src={`/assets/cutscene/scene_${currentStep}.png`}
+          src={`/assets/cutscene/${SCENE_FILES[currentStep - 1]}`}
           alt={`Story scene ${currentStep}`}
           fill
           className="object-contain px-4"
