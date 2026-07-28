@@ -120,7 +120,13 @@ const BacteriaGame = () => {
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   
   const [feedback, setFeedback] = useState<null | "correct" | "wrong">(null);
-  
+
+  // "Find the bacteria" aid shown right after a quiz question closes: a short
+  // countdown keeps the game paused for a beat, and a pulsing locator ring
+  // highlights the bacterium so the player doesn't lose track of it.
+  const [resumeCountdown, setResumeCountdown] = useState<number | null>(null);
+  const [highlightBacteria, setHighlightBacteria] = useState(false);
+  const resumeTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const antibioticDirectionsRef = useRef<Direction[]>([...INITIAL_ENEMY_DIRECTIONS]);
   const nextDirectionRef = useRef<Direction | null>(null);
@@ -443,6 +449,43 @@ const BacteriaGame = () => {
     });
   };
 
+// Cancels any in-flight "find the bacteria" countdown/highlight. Called
+// whenever a new question fires, the level resets, or the component unmounts,
+// so overlapping countdowns from rapid consecutive hits can't stack up.
+const clearResumeTimers = () => {
+  resumeTimersRef.current.forEach(clearTimeout);
+  resumeTimersRef.current = [];
+  setResumeCountdown(null);
+  setHighlightBacteria(false);
+};
+
+// Keeps the game paused for a few beats after a question closes and pulses a
+// locator ring on the bacterium, instead of resuming instantly and leaving
+// the player hunting the board for where it ended up.
+const startResumeCountdown = () => {
+  clearResumeTimers();
+  setHighlightBacteria(true);
+  setResumeCountdown(3);
+
+  [1, 2].forEach((tick) => {
+    resumeTimersRef.current.push(
+      setTimeout(() => setResumeCountdown(3 - tick), tick * 1000)
+    );
+  });
+
+  resumeTimersRef.current.push(
+    setTimeout(() => {
+      setResumeCountdown(null);
+      setIsRunning(true);
+    }, 3000)
+  );
+
+  // Keep the ring visible for a couple seconds after play resumes too.
+  resumeTimersRef.current.push(
+    setTimeout(() => setHighlightBacteria(false), 5000)
+  );
+};
+
 const triggerQuestion = () => {
   const difficulty = getEffectiveTier(currentConfig.baseTier, lives);
   const pool = questions.filter(q => q.difficulty === difficulty);
@@ -489,7 +532,9 @@ const handleAnswer = (selected: string) => {
 
   setShowQuestion(false);
   setCurrentQuestion(null);
-  setIsRunning(true);
+  // Don't resume instantly — give the player a moment (with a highlighted
+  // bacterium) to find where play is about to continue from.
+  startResumeCountdown();
 
   // auto-hide feedback popup
   setTimeout(() => {
@@ -521,6 +566,9 @@ const handleAnswer = (selected: string) => {
     const config = LEVELS[index];
     const grid = buildLevelState(config);
     const spawns = generateSpawnPositions(config);
+
+    // Cancel any in-flight "find the bacteria" countdown from a previous question
+    clearResumeTimers();
 
     setLevel(grid);
     setBacteriaPosition(config.playerStart);
@@ -612,6 +660,13 @@ const handleAnswer = (selected: string) => {
   useEffect(() => {
     initializeGame();
   }, [initializeGame]);
+
+  // Cleanup any pending "find the bacteria" timers on unmount
+  useEffect(() => {
+    return () => {
+      resumeTimersRef.current.forEach(clearTimeout);
+    };
+  }, []);
 
   // Controls
   useEffect(() => {
@@ -841,7 +896,29 @@ const handleAnswer = (selected: string) => {
 
                   {/* Entities Layer (Z-Index 10) */}
                   <div className="absolute inset-0 pointer-events-none z-10">
-                    
+
+                    {/* "Find the bacteria" locator ring, shown right after a quiz question */}
+                    {highlightBacteria && bacteriaInstance && (
+                      <GlidingEntity
+                        x={bacteriaPosition.x}
+                        y={bacteriaPosition.y}
+                        cellSize={responsiveCellSize}
+                        style={{ zIndex: 5 }}
+                      >
+                        <div className="relative flex items-center justify-center w-full h-full">
+                          <div
+                            className="absolute rounded-full border-4 border-yellow-400 animate-ping opacity-75"
+                            style={{ width: '220%', height: '220%' }}
+                          />
+                          <div
+                            className="absolute rounded-full bg-yellow-400/25"
+                            style={{ width: '170%', height: '170%' }}
+                          />
+                          <div className="absolute -top-7 text-2xl animate-bounce">🔻</div>
+                        </div>
+                      </GlidingEntity>
+                    )}
+
                     {/* Player (Bacteria) */}
                     {bacteriaInstance && (
                       <GlidingEntity
@@ -922,6 +999,14 @@ const handleAnswer = (selected: string) => {
       `}
     >
       {feedback === "correct" ? "✔ Correct!" : "✖ Wrong!"}
+    </div>
+  </div>
+)}
+{resumeCountdown !== null && (
+  <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] pointer-events-none">
+    <div className="px-4 py-2 rounded-full text-sm font-bold shadow-2xl bg-yellow-500 text-black animate-pulse flex items-center gap-2">
+      <span>🔍</span>
+      <span>Find your bacteria! Resuming in {resumeCountdown}…</span>
     </div>
   </div>
 )}
