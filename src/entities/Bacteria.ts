@@ -14,6 +14,13 @@ export class Bacteria {
     down: ['bacteria left 1.png', 'bacteria left 2.png'],
   };
 
+  private superbugSpriteMap = {
+    left: ['superbug left 1.png', 'superbug left 2.png'],
+    right: ['superbug right 1.png', 'superbug right 2.png'],
+    up: ['superbug right 1.png', 'superbug right 2.png'],
+    down: ['superbug left 1.png', 'superbug left 2.png'],
+  };
+
   constructor(x: number, y: number) {
     this.x = x;
     this.y = y;
@@ -45,8 +52,10 @@ export class Bacteria {
     }
   }
 
-  getCurrentSprite(): string {
-    const sprites = this.spriteMap[this.direction];
+  getCurrentSprite(evolved = false): string {
+    const sprites = evolved
+      ? this.superbugSpriteMap[this.direction]
+      : this.spriteMap[this.direction];
     return `/assets/bacteria/${sprites[this.currentFrame]}`;
   }
 
