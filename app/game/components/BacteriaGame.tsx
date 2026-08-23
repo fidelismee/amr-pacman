@@ -929,6 +929,7 @@ const handleAnswer = (selected: string) => {
                         <BacteriaRenderer
                           bacteria={bacteriaInstance}
                           scale={responsiveCellSize / 32}
+                          evolved={poweredUp}
                         />
                       </GlidingEntity>
                     )}
@@ -944,8 +945,11 @@ const handleAnswer = (selected: string) => {
                           y={pos.y}
                           cellSize={responsiveCellSize}
                           style={{
-                            opacity: poweredUp ? 0.5 : 1,
-                            filter: poweredUp ? 'grayscale(100%)' : 'none',
+                            opacity: poweredUp ? 0.35 : 1,
+                            filter: poweredUp ? 'grayscale(100%) brightness(0.85)' : 'none',
+                            animation: poweredUp
+                              ? 'antibioticVulnerableBlink 600ms steps(2, end) infinite'
+                              : undefined,
                             zIndex: 20,
                           }}
                         >
@@ -985,6 +989,13 @@ const handleAnswer = (selected: string) => {
           </button>
         ))}
       </div>
+    </div>
+  </div>
+)}
+{poweredUp && (
+  <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[55] pointer-events-none px-2">
+    <div className="superbug-evolution-warning max-w-[calc(100vw-1rem)] rounded-md border-2 border-lime-300 bg-black/85 px-3 py-1.5 text-center text-[11px] font-black uppercase tracking-normal text-lime-200 shadow-2xl sm:text-sm">
+      SUPERBUG EVOLUTION! ANTIBIOTIC RESISTANT
     </div>
   </div>
 )}

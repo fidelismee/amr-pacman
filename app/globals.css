@@ -202,3 +202,33 @@ button,
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+@keyframes antibioticVulnerableBlink {
+  0%,
+  100% {
+    opacity: 0.2;
+    filter: grayscale(100%) brightness(0.65);
+  }
+  50% {
+    opacity: 0.9;
+    filter: grayscale(100%) brightness(1.35);
+  }
+}
+
+@keyframes superbugEvolutionBlink {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 18px rgba(132, 204, 22, 0.65);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.98);
+    box-shadow: 0 0 4px rgba(132, 204, 22, 0.25);
+  }
+}
+
+.superbug-evolution-warning {
+  animation: superbugEvolutionBlink 700ms steps(2, end) infinite;
+}
