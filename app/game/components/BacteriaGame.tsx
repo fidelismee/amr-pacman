@@ -90,15 +90,6 @@ const BacteriaGame = () => {
   const [levelComplete, setLevelComplete] = useState(false);
   const currentConfig = LEVELS[currentLevelIndex];
 
-  // Optional themed background art per level (index-based). Drop matching
-  // files into /public/assets/levels/. A level with no entry here just keeps
-  // the plain dark grid look.
-  const LEVEL_BACKGROUNDS: Record<number, string> = {
-    0: '/assets/levels/level_1.png',
-    1: '/assets/levels/level_2.png',
-    2: '/assets/levels/level_3.png',
-  };
-
   const [level, setLevel] = useState<Level>(() => buildLevelState(LEVELS[0]));
   const [bacteriaPosition, setBacteriaPosition] = useState<Position>(LEVELS[0].playerStart);
   const [antibioticPositions, setAntibioticPositions] = useState<Position[]>([]);
@@ -866,17 +857,9 @@ const handleAnswer = (selected: string) => {
                   onBlur={() => setHasFocus(false)}
                   tabIndex={0}
                 >
-                  {/* Level background art (optional, per-level skin) */}
-                  {LEVEL_BACKGROUNDS[currentLevelIndex] && (
-                    <div
-                      className="absolute inset-0 z-0 bg-cover bg-center"
-                      style={{ backgroundImage: `url('${LEVEL_BACKGROUNDS[currentLevelIndex]}')` }}
-                    />
-                  )}
-
                   {/* Grid Layer */}
                   <div 
-                    className={`relative z-0 ${LEVEL_BACKGROUNDS[currentLevelIndex] ? '' : 'bg-black/80 backdrop-blur-sm'}`}
+                    className="bg-black/80 backdrop-blur-sm relative z-0"
                     style={{
                       display: 'grid',
                       gridTemplateColumns: `repeat(${gridWidth}, ${responsiveCellSize}px)`,
@@ -887,11 +870,10 @@ const handleAnswer = (selected: string) => {
                       row.map((cell, x) => {
                         let cellContent = null;
                         let cellClass = "flex items-center justify-center relative";
-                        const hasBg = !!LEVEL_BACKGROUNDS[currentLevelIndex];
-                        if (cell === 1) cellClass += hasBg ? " bg-black/10 border-[0.5px] border-black/10" : " bg-gray-800/80 border-[0.5px] border-gray-700/30";
+                        if (cell === 1) cellClass += " bg-gray-800/80 border-[0.5px] border-gray-700/30";
                         else {
                           if (cell === 0) {
-                            cellContent = <div className={`w-1.5 h-1.5 rounded-full bg-green-500/80 shadow-[0_0_8px_rgba(34,197,94,0.6)] ${hasBg ? 'ring-1 ring-black/40' : ''}`} />;
+                            cellContent = <div className="w-1.5 h-1.5 rounded-full bg-green-500/80 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />;
                           } else if (cell === 3) {
                             cellContent = (
                               <img
@@ -902,7 +884,6 @@ const handleAnswer = (selected: string) => {
                                   height: `${responsiveCellSize * 0.6}px`,
                                   imageRendering: 'pixelated',
                                   animation: 'pulse 1s infinite',
-                                  filter: hasBg ? 'drop-shadow(0 0 4px rgba(0,0,0,0.8))' : undefined,
                                 }}
                               />
                             );
