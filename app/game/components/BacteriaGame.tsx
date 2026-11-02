@@ -31,6 +31,21 @@ const CELL_SIZE = 24;
 const POWER_UP_DURATION = 5000;
 const INITIAL_ENEMY_DIRECTIONS: Direction[] = ['right', 'left', 'up', 'down'];
 
+// Scoreboard (persisted in the browser's localStorage)
+const SCOREBOARD_KEY = 'amr-busters-scoreboard';
+const PLAYER_NAME_KEY = 'amr-busters-player-name';
+const MAX_SCOREBOARD_ENTRIES = 10;
+const MAX_NAME_LENGTH = 12;
+
+type ScoreEntry = {
+  id: string;
+  name: string;
+  score: number;
+  level: number; // 1-based level reached
+  won: boolean;
+  date: string; // ISO string
+};
+
 // Positions an entity with a transitioned transform so single-cell moves glide
 // between tiles instead of snapping once per 200 ms game tick. Transform runs
 // on the compositor (no layout), unlike the previous left/top positioning.
@@ -120,6 +135,13 @@ const BacteriaGame = () => {
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   
   const [feedback, setFeedback] = useState<null | "correct" | "wrong">(null);
+
+  // Player name + scoreboard
+  const [playerName, setPlayerName] = useState('');
+  const [nameInput, setNameInput] = useState('');
+  const [scoreboard, setScoreboard] = useState<ScoreEntry[]>([]);
+  const [lastEntryId, setLastEntryId] = useState<string | null>(null);
+  const scoreSavedRef = useRef(false);
 
   // "Find the bacteria" aid shown right after a quiz question closes: a short
   // countdown keeps the game paused for a beat, and a pulsing locator ring
@@ -586,6 +608,7 @@ const handleAnswer = (selected: string) => {
     prevAntibioticPositionsRef.current = spawns.map((pos) => ({ ...pos }));
     poweredUpRef.current = false;
     justCollectedBoosterRef.current = false;
+    scoreSavedRef.current = false;
 
     if (resetScore) setScore(0);
     setLives(3);
@@ -668,13 +691,77 @@ const handleAnswer = (selected: string) => {
     };
   }, []);
 
+  // Load the saved scoreboard and last-used player name (client only).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SCOREBOARD_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setScoreboard(parsed);
+      }
+      const savedName = localStorage.getItem(PLAYER_NAME_KEY);
+      if (savedName) setNameInput(savedName);
+    } catch {
+      // localStorage unavailable (private mode, etc.) — scoreboard just won't persist
+    }
+  }, []);
+
+  // When a run ends (win or game over), record the score once.
+  useEffect(() => {
+    if (gameActive || !playerName || scoreSavedRef.current) return;
+    scoreSavedRef.current = true;
+    if (score <= 0) return;
+
+    const entry: ScoreEntry = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: playerName,
+      score,
+      level: currentLevelIndex + 1,
+      won: lives > 0,
+      date: new Date().toISOString(),
+    };
+    const next = [...scoreboard, entry]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, MAX_SCOREBOARD_ENTRIES);
+    setScoreboard(next);
+    setLastEntryId(entry.id);
+    try {
+      localStorage.setItem(SCOREBOARD_KEY, JSON.stringify(next));
+    } catch {
+      // ignore storage errors
+    }
+  }, [gameActive, playerName, score, lives, currentLevelIndex, scoreboard]);
+
+  const handleNameSubmit = () => {
+    const cleaned = nameInput.trim().slice(0, MAX_NAME_LENGTH);
+    if (!cleaned) return;
+    try {
+      localStorage.setItem(PLAYER_NAME_KEY, cleaned);
+    } catch {
+      // ignore storage errors
+    }
+    setPlayerName(cleaned);
+  };
+
+  const handleClearScoreboard = () => {
+    setScoreboard([]);
+    setLastEntryId(null);
+    try {
+      localStorage.removeItem(SCOREBOARD_KEY);
+    } catch {
+      // ignore storage errors
+    }
+  };
+
   // Controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore game controls while the loading screen / intro cutscene is up.
       // BacteriaGame stays mounted behind them, so without this Space during
       // the intro also unlocked audio and toggled the game running unseen.
-      if (isLoading || showCutscene) return;
+      // Also ignored until a player name is chosen (the name input needs
+      // Space / R as normal typing keys).
+      if (isLoading || showCutscene || !playerName) return;
 
       // Dev/test cheat: Ctrl+Alt+1/2/3 jumps to that level (works any time).
       if (e.ctrlKey && e.altKey && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) {
@@ -699,7 +786,7 @@ const handleAnswer = (selected: string) => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleDirectionChange, handlePauseToggle, handleRestart, jumpToLevel, isRunning, isLoading, showCutscene]);
+  }, [handleDirectionChange, handlePauseToggle, handleRestart, jumpToLevel, isRunning, isLoading, showCutscene, playerName]);
 
   // Game Loop — also paused while the loading screen / intro cutscene shows,
   // otherwise the game silently plays (and loses lives) behind the intro.
@@ -707,7 +794,7 @@ const handleAnswer = (selected: string) => {
     // Also gated on hasFocus so the game doesn't play itself (auto-moving and
     // losing lives) behind the "Click to Focus" overlay before the player has
     // interacted. On PWA/mobile hasFocus starts true, so play begins normally.
-    if (!isRunning || !gameActive || isLoading || showCutscene || !hasFocus) return;
+    if (!isRunning || !gameActive || isLoading || showCutscene || !hasFocus || !playerName) return;
 
     const interval = setInterval(() => {
       // IMPORTANT: Store previous positions BEFORE movement for crossing collision detection
@@ -733,7 +820,7 @@ const handleAnswer = (selected: string) => {
     }, 200);
 
     return () => clearInterval(interval);
-  }, [isRunning, gameActive, isLoading, showCutscene, hasFocus, bacteriaPosition, antibioticPositions, poweredUp, level, currentLevelIndex]);
+  }, [isRunning, gameActive, isLoading, showCutscene, hasFocus, bacteriaPosition, antibioticPositions, poweredUp, level, currentLevelIndex, playerName]);
 
   // Helpers — count nutrients and boosters in a single pass over the grid
   // rather than flattening it twice per render.
@@ -777,6 +864,38 @@ const handleAnswer = (selected: string) => {
     return `/assets/lives/live-${clampedLives}.png`;
   };
 
+  // Shared scoreboard rows (name screen, side panel, end-of-game overlay)
+  const renderScoreRows = (limit: number) => (
+    <ol className="space-y-0.5">
+      {scoreboard.slice(0, limit).map((entry, i) => {
+        const isLast = entry.id === lastEntryId;
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
+        return (
+          <li
+            key={entry.id}
+            className={`flex items-center justify-between gap-2 px-1.5 py-0.5 rounded text-xs ${
+              isLast ? 'bg-green-700/50 border border-green-500' : 'bg-gray-900/40'
+            }`}
+          >
+            <span className="flex items-center gap-1.5 min-w-0">
+              <span className="w-5 text-center shrink-0">{medal}</span>
+              <span className="truncate text-gray-200">{entry.name}</span>
+              {entry.won && <span title="Completed all levels">✅</span>}
+            </span>
+            <span className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[10px] text-gray-500">L{entry.level}</span>
+              <span className="font-bold text-green-400">{entry.score}</span>
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+
+  const lastRank = lastEntryId
+    ? scoreboard.findIndex((e) => e.id === lastEntryId) + 1
+    : 0;
+
   // --- STEP C: RENDER LOADING SCREEN ---
   if (isLoading) {
     return (
@@ -795,6 +914,49 @@ const handleAnswer = (selected: string) => {
           setShowCutscene(false); 
         }} 
       />
+    );
+  }
+
+  // --- NAME ENTRY SCREEN (shown once, after the intro cutscene) ---
+  if (!playerName) {
+    return (
+      <div
+        className="min-h-dvh text-white flex items-center justify-center p-4 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/background.png')", backgroundAttachment: 'fixed' }}
+      >
+        <div className="w-full max-w-sm bg-gray-900/90 border-2 border-green-500 rounded-xl p-6 shadow-2xl">
+          <h2 className="text-xl font-bold text-green-300 text-center mb-1">🦠 Enter Your Name</h2>
+          <p className="text-xs text-gray-400 text-center mb-4">
+            Your score will be saved to the scoreboard.
+          </p>
+          <input
+            type="text"
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleNameSubmit();
+            }}
+            maxLength={MAX_NAME_LENGTH}
+            placeholder="Your name"
+            autoFocus
+            className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-600 focus:border-green-500 focus:outline-none text-white text-center mb-3"
+          />
+          <button
+            onClick={handleNameSubmit}
+            disabled={!nameInput.trim()}
+            className="w-full py-2 bg-green-600 hover:bg-green-500 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed rounded font-bold"
+          >
+            Start Game
+          </button>
+
+          {scoreboard.length > 0 && (
+            <div className="mt-4">
+              <h3 className="text-sm font-bold text-yellow-300 text-center mb-1">🏆 Top Scores</h3>
+              {renderScoreRows(5)}
+            </div>
+          )}
+        </div>
+      </div>
     );
   }
   return (
@@ -1041,8 +1203,22 @@ const handleAnswer = (selected: string) => {
                   )}
                   {!gameActive && (
                     <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[80] p-4">
-                      <div className="text-center">
-                        <h2 className="text-2xl font-bold mb-4 text-white">{gameMessage}</h2>
+                      <div className="text-center w-full max-w-xs">
+                        <h2 className="text-2xl font-bold mb-1 text-white">{gameMessage}</h2>
+                        <p className="text-sm text-gray-300 mb-3">
+                          {playerName} — Final score: <span className="font-bold text-green-400">{score}</span>
+                          {lastRank > 0 && (
+                            <span className="block text-yellow-300 text-xs mt-0.5">
+                              🏆 Rank #{lastRank} on the scoreboard
+                            </span>
+                          )}
+                        </p>
+                        {scoreboard.length > 0 && (
+                          <div className="bg-gray-800/90 border border-gray-700 rounded-lg p-2 mb-4 text-left max-h-[40vh] overflow-y-auto">
+                            <h3 className="text-sm font-bold text-yellow-300 text-center mb-1">🏆 Top Scores</h3>
+                            {renderScoreRows(MAX_SCOREBOARD_ENTRIES)}
+                          </div>
+                        )}
                         <button onClick={handleRestartFromStart} className="px-6 py-2 bg-green-600 rounded font-bold">Try Again</button>
                       </div>
                     </div>
@@ -1058,6 +1234,20 @@ const handleAnswer = (selected: string) => {
             {/* Stats Panel - More Compact */}
             <div className="bg-gray-800 p-2 rounded-lg border border-gray-700 game-stats-compact">
               <h3 className="text-sm font-bold mb-1 text-green-300 text-center">Game Stats</h3>
+              <div className="flex items-center justify-center gap-1 text-xs text-gray-200 mb-0.5">
+                <span>👤</span>
+                <span className="font-bold truncate max-w-[8rem]">{playerName}</span>
+                <button
+                  onClick={() => {
+                    setIsRunning(false);
+                    setNameInput(playerName);
+                    setPlayerName('');
+                  }}
+                  className="text-[10px] text-gray-500 hover:text-gray-300 underline"
+                >
+                  change
+                </button>
+              </div>
               <div className="text-[10px] text-center text-gray-400 mb-1">{currentConfig.name}</div>
               <div className="flex justify-between mb-0.5">
                 <span className="text-gray-400 text-xs">Score</span>
@@ -1094,6 +1284,28 @@ const handleAnswer = (selected: string) => {
               <div className="text-[10px] text-center text-gray-500 mt-1">
                 Red = Enemy • Blue = Booster
               </div>
+            </div>
+
+            {/* Scoreboard */}
+            <div className="bg-gray-800 p-2 rounded-lg border border-gray-700">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-sm font-bold text-yellow-300">🏆 Scoreboard</h3>
+                {scoreboard.length > 0 && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Clear all saved scores?')) handleClearScoreboard();
+                    }}
+                    className="text-[10px] text-gray-500 hover:text-red-400 underline"
+                  >
+                    clear
+                  </button>
+                )}
+              </div>
+              {scoreboard.length === 0 ? (
+                <p className="text-[10px] text-gray-500 text-center py-1">No scores yet — be the first!</p>
+              ) : (
+                renderScoreRows(5)
+              )}
             </div>
 
             {/* Platform-specific controls - More Compact */}
