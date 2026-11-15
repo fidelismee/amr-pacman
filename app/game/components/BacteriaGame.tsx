@@ -4,7 +4,7 @@
 
 import LoadingScreen from './Loading_Screen'; 
 import Cutscene from './cutscene'; 
-import { useState, useCallback, useRef, useEffect, type CSSProperties, type ReactNode } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, type CSSProperties, type ReactNode } from 'react';
 import Image from 'next/image';
 import { usePlatform, useShouldShowTouchControls, useShouldShowKeyboardInstructions } from '../../contexts/PlatformContext';
 import TouchController from '../../components/TouchController';
@@ -29,6 +29,7 @@ import { getEffectiveTier } from '../quiz/difficulty';
 // Constants
 const CELL_SIZE = 24;
 const POWER_UP_DURATION = 5000;
+const TICK_MS = 200; // one game step; the glide transition below uses the same value
 const INITIAL_ENEMY_DIRECTIONS: Direction[] = ['right', 'left', 'up', 'down'];
 
 // Scoreboard (persisted in the browser's localStorage)
@@ -40,7 +41,6 @@ const MAX_NAME_LENGTH = 12;
 // Difficulty tuning — adjust these to taste
 const INVINCIBILITY_MS = 10000;   // protection after being eaten (starts when play resumes)
 const LEVEL_START_GRACE_MS = 3000; // short protection at the start of every level
-const ENEMY_SKIP_EVERY = 3;       // antibiotics skip every Nth tick (3 = ~67% speed, 0 = full speed)
 
 type ScoreEntry = {
   id: string;
@@ -87,7 +87,7 @@ const GlidingEntity = ({
         alignItems: 'center',
         justifyContent: 'center',
         transform: `translate3d(${x * cellSize}px, ${y * cellSize}px, 0)`,
-        transition: jumped ? 'none' : 'transform 200ms linear',
+        transition: jumped ? 'none' : `transform ${TICK_MS}ms linear`,
         ...style,
       }}
     >
@@ -151,7 +151,6 @@ const BacteriaGame = () => {
   // Post-eaten protection: ref is read by collision logic, state drives the visuals.
   const [invincibleMs, setInvincibleMs] = useState(0);
   const invincibleMsRef = useRef(0);
-  const enemyTickRef = useRef(0);
 
   // "Find the bacteria" aid shown right after a quiz question closes: a short
   // countdown keeps the game paused for a beat, and a pulsing locator ring
@@ -632,7 +631,6 @@ const handleAnswer = (selected: string) => {
     scoreSavedRef.current = false;
     invincibleMsRef.current = LEVEL_START_GRACE_MS;
     setInvincibleMs(LEVEL_START_GRACE_MS);
-    enemyTickRef.current = 0;
 
     if (resetScore) setScore(0);
     setLives(3);
@@ -820,20 +818,19 @@ const handleAnswer = (selected: string) => {
     // interacted. On PWA/mobile hasFocus starts true, so play begins normally.
     if (!isRunning || !gameActive || isLoading || showCutscene || !hasFocus || !playerName) return;
 
+    // NOTE: this interval is intentionally re-created after each move (the deps
+    // below change every tick). That makes every step wait for the previous
+    // render to finish, so steps can never bunch up and make the sprites jump.
     const interval = setInterval(() => {
       // IMPORTANT: Store previous positions BEFORE movement for crossing collision detection
       prevBacteriaPositionRef.current = { ...bacteriaPositionRef.current };
       prevAntibioticPositionsRef.current = antibioticPositionsRef.current.map(pos => ({ ...pos }));
-      
+    
       moveBacteria();
-      // Antibiotics skip every Nth tick so they're a bit slower than the player.
-      enemyTickRef.current += 1;
-      if (!(ENEMY_SKIP_EVERY > 0 && enemyTickRef.current % ENEMY_SKIP_EVERY === 0)) {
-        moveAntibiotics();
-      }
+      moveAntibiotics();
       if (poweredUp) {
         setPowerUpTimer(prev => {
-          const newTimer = prev <= 200 ? 0 : prev - 200;
+          const newTimer = prev <= TICK_MS ? 0 : prev - TICK_MS;
           if (newTimer === 0) {
             setPoweredUp(false);
             poweredUpRef.current = false; // IMPORTANT: Sync ref when power-up expires
@@ -842,16 +839,16 @@ const handleAnswer = (selected: string) => {
         });
       }
       checkCollisions();
-      
+    
       // Reset the justCollectedBoosterRef after collision check
       justCollectedBoosterRef.current = false;
 
       // Count down protection (only ticks while the game is actually running).
       if (invincibleMsRef.current > 0) {
-        invincibleMsRef.current = Math.max(0, invincibleMsRef.current - 200);
+        invincibleMsRef.current = Math.max(0, invincibleMsRef.current - TICK_MS);
         setInvincibleMs(invincibleMsRef.current);
       }
-    }, 200);
+    }, TICK_MS);
 
     return () => clearInterval(interval);
   }, [isRunning, gameActive, isLoading, showCutscene, hasFocus, bacteriaPosition, antibioticPositions, poweredUp, level, currentLevelIndex, playerName]);
@@ -929,6 +926,42 @@ const handleAnswer = (selected: string) => {
   const lastRank = lastEntryId
     ? scoreboard.findIndex((e) => e.id === lastEntryId) + 1
     : 0;
+
+  // The maze only changes when a dot/booster is eaten (new `level` array) or the
+  // cell size changes, so build it once and reuse it across the 5 ticks/second.
+  const gridCells = useMemo(
+    () => (
+      <>
+                    {level.map((row, y) =>
+                      row.map((cell, x) => {
+                        let cellContent = null;
+                        let cellClass = "flex items-center justify-center relative";
+                        if (cell === 1) cellClass += " bg-gray-800/80 border-[0.5px] border-gray-700/30";
+                        else {
+                          if (cell === 0) {
+                            cellContent = <div className="w-1.5 h-1.5 rounded-full bg-green-500/80 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />;
+                          } else if (cell === 3) {
+                            cellContent = (
+                              <img
+                                src="/assets/resistance/resistance booster.png"
+                                alt="Resistance Booster"
+                                style={{
+                                  width: `${responsiveCellSize * 0.6}px`,
+                                  height: `${responsiveCellSize * 0.6}px`,
+                                  imageRendering: 'pixelated',
+                                  animation: 'pulse 1s infinite',
+                                }}
+                              />
+                            );
+                          }
+                        }
+                        return <div key={`${x}-${y}`} className={cellClass} style={{ width: responsiveCellSize, height: responsiveCellSize }}>{cellContent}</div>;
+                      })
+                    )}
+      </>
+    ),
+    [level, responsiveCellSize]
+  );
 
   // --- STEP C: RENDER LOADING SCREEN ---
   if (isLoading) {
@@ -1069,32 +1102,7 @@ const handleAnswer = (selected: string) => {
                       gridTemplateRows: `repeat(${gridHeight}, ${responsiveCellSize}px)`,
                     }}
                   >
-                    {level.map((row, y) =>
-                      row.map((cell, x) => {
-                        let cellContent = null;
-                        let cellClass = "flex items-center justify-center relative";
-                        if (cell === 1) cellClass += " bg-gray-800/80 border-[0.5px] border-gray-700/30";
-                        else {
-                          if (cell === 0) {
-                            cellContent = <div className="w-1.5 h-1.5 rounded-full bg-green-500/80 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />;
-                          } else if (cell === 3) {
-                            cellContent = (
-                              <img
-                                src="/assets/resistance/resistance booster.png"
-                                alt="Resistance Booster"
-                                style={{
-                                  width: `${responsiveCellSize * 0.6}px`,
-                                  height: `${responsiveCellSize * 0.6}px`,
-                                  imageRendering: 'pixelated',
-                                  animation: 'pulse 1s infinite',
-                                }}
-                              />
-                            );
-                          }
-                        }
-                        return <div key={`${x}-${y}`} className={cellClass} style={{ width: responsiveCellSize, height: responsiveCellSize }}>{cellContent}</div>;
-                      })
-                    )}
+                    {gridCells}
                   </div>
 
                   {/* Entities Layer (Z-Index 10) */}
@@ -1133,11 +1141,20 @@ const handleAnswer = (selected: string) => {
                             ? {
                                 // Flash faster in the last 2s as a warning it's about to wear off
                                 animation: `bacteriaInvincibleBlink ${invincibleMs <= 2000 ? 250 : 500}ms ease-in-out infinite`,
-                                filter: 'drop-shadow(0 0 6px rgba(250, 204, 21, 0.9))',
                               }
                             : undefined
                         }
                       >
+                        {invincibleMs > 0 && (
+                          <div
+                            className="absolute rounded-full border-2 border-yellow-300"
+                            style={{
+                              width: '140%',
+                              height: '140%',
+                              boxShadow: '0 0 8px rgba(250, 204, 21, 0.9)',
+                            }}
+                          />
+                        )}
                         <BacteriaRenderer
                           bacteria={bacteriaInstance}
                           scale={responsiveCellSize / 32}
