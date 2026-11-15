@@ -37,6 +37,11 @@ const PLAYER_NAME_KEY = 'amr-busters-player-name';
 const MAX_SCOREBOARD_ENTRIES = 10;
 const MAX_NAME_LENGTH = 12;
 
+// Difficulty tuning — adjust these to taste
+const INVINCIBILITY_MS = 10000;   // protection after being eaten (starts when play resumes)
+const LEVEL_START_GRACE_MS = 3000; // short protection at the start of every level
+const ENEMY_SKIP_EVERY = 3;       // antibiotics skip every Nth tick (3 = ~67% speed, 0 = full speed)
+
 type ScoreEntry = {
   id: string;
   name: string;
@@ -142,6 +147,11 @@ const BacteriaGame = () => {
   const [scoreboard, setScoreboard] = useState<ScoreEntry[]>([]);
   const [lastEntryId, setLastEntryId] = useState<string | null>(null);
   const scoreSavedRef = useRef(false);
+
+  // Post-eaten protection: ref is read by collision logic, state drives the visuals.
+  const [invincibleMs, setInvincibleMs] = useState(0);
+  const invincibleMsRef = useRef(0);
+  const enemyTickRef = useRef(0);
 
   // "Find the bacteria" aid shown right after a quiz question closes: a short
   // countdown keeps the game paused for a beat, and a pulsing locator ring
@@ -438,6 +448,9 @@ const BacteriaGame = () => {
     const isPoweredUp = poweredUpRef.current || justCollectedBoosterRef.current;
 
     if (!isPoweredUp) {
+      // Protected (just respawned / level start): antibiotics pass harmlessly.
+      if (invincibleMsRef.current > 0) return;
+
       // Any hit ends the run in one quiz — trigger it once, not per enemy.
       playEffect('function');
       triggerQuestion();
@@ -471,6 +484,12 @@ const BacteriaGame = () => {
     });
   };
 
+// Gives the bacterium a window where antibiotics can't catch it.
+const startInvincibility = (ms: number) => {
+  invincibleMsRef.current = ms;
+  setInvincibleMs(ms);
+};
+
 // Cancels any in-flight "find the bacteria" countdown/highlight. Called
 // whenever a new question fires, the level resets, or the component unmounts,
 // so overlapping countdowns from rapid consecutive hits can't stack up.
@@ -499,6 +518,8 @@ const startResumeCountdown = () => {
     setTimeout(() => {
       setResumeCountdown(null);
       setIsRunning(true);
+      // The 10s protection starts now, so the player gets the full window of play.
+      startInvincibility(INVINCIBILITY_MS);
     }, 3000)
   );
 
@@ -609,6 +630,9 @@ const handleAnswer = (selected: string) => {
     poweredUpRef.current = false;
     justCollectedBoosterRef.current = false;
     scoreSavedRef.current = false;
+    invincibleMsRef.current = LEVEL_START_GRACE_MS;
+    setInvincibleMs(LEVEL_START_GRACE_MS);
+    enemyTickRef.current = 0;
 
     if (resetScore) setScore(0);
     setLives(3);
@@ -802,7 +826,11 @@ const handleAnswer = (selected: string) => {
       prevAntibioticPositionsRef.current = antibioticPositionsRef.current.map(pos => ({ ...pos }));
       
       moveBacteria();
-      moveAntibiotics();
+      // Antibiotics skip every Nth tick so they're a bit slower than the player.
+      enemyTickRef.current += 1;
+      if (!(ENEMY_SKIP_EVERY > 0 && enemyTickRef.current % ENEMY_SKIP_EVERY === 0)) {
+        moveAntibiotics();
+      }
       if (poweredUp) {
         setPowerUpTimer(prev => {
           const newTimer = prev <= 200 ? 0 : prev - 200;
@@ -817,6 +845,12 @@ const handleAnswer = (selected: string) => {
       
       // Reset the justCollectedBoosterRef after collision check
       justCollectedBoosterRef.current = false;
+
+      // Count down protection (only ticks while the game is actually running).
+      if (invincibleMsRef.current > 0) {
+        invincibleMsRef.current = Math.max(0, invincibleMsRef.current - 200);
+        setInvincibleMs(invincibleMsRef.current);
+      }
     }, 200);
 
     return () => clearInterval(interval);
@@ -968,6 +1002,13 @@ const handleAnswer = (selected: string) => {
   }}
 >
       <div className="w-full max-w-6xl mx-auto flex-1 flex flex-col overflow-y-auto overflow-x-hidden safe-area-padding p-1 md:p-2 full-width-landscape">
+        <style>{`
+          @keyframes bacteriaInvincibleBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+          }
+        `}</style>
+
         {/* Portrait mode warning for mobile PWA - More Compact */}
         {isPortrait && platform.isPWA && (
           <div className="mb-1 p-2 bg-yellow-900/50 border border-yellow-700 rounded-lg text-center">
@@ -1087,6 +1128,15 @@ const handleAnswer = (selected: string) => {
                         x={bacteriaPosition.x}
                         y={bacteriaPosition.y}
                         cellSize={responsiveCellSize}
+                        style={
+                          invincibleMs > 0
+                            ? {
+                                // Flash faster in the last 2s as a warning it's about to wear off
+                                animation: `bacteriaInvincibleBlink ${invincibleMs <= 2000 ? 250 : 500}ms ease-in-out infinite`,
+                                filter: 'drop-shadow(0 0 6px rgba(250, 204, 21, 0.9))',
+                              }
+                            : undefined
+                        }
                       >
                         <BacteriaRenderer
                           bacteria={bacteriaInstance}
@@ -1172,6 +1222,14 @@ const handleAnswer = (selected: string) => {
       `}
     >
       {feedback === "correct" ? "✔ Correct!" : "✖ Wrong!"}
+    </div>
+  </div>
+)}
+{invincibleMs > 0 && resumeCountdown === null && !showQuestion && gameActive && (
+  <div className="fixed top-28 left-1/2 -translate-x-1/2 z-[55] pointer-events-none">
+    <div className="px-3 py-1 rounded-full text-xs font-bold shadow-2xl bg-yellow-400/90 text-black flex items-center gap-1.5">
+      <span>🛡️</span>
+      <span>Protected: {Math.ceil(invincibleMs / 1000)}s</span>
     </div>
   </div>
 )}
