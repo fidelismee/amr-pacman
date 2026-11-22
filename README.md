@@ -140,3 +140,9 @@ app/
 ## License
 
 MIT
+
+## Player registration and saved progress
+
+New players accept the displayed terms, choose a nickname and category, and answer the AMR awareness question. The generated Player ID is their login credential. After registration or login, the browser remembers the last Player ID in localStorage. On the next visit, choose Continue last game, use another ID, or forget the saved ID. Players on a different browser can enter their ID manually. Best score, completed levels, and quiz responses are saved during play. A returning player starts at the beginning of the next unlocked level with the score earned at that checkpoint. Completing all levels enables a fresh run.
+
+Development uses a git-ignored SQLite file, `amr-players.db`. For production, configure the server-side `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` for a shared libSQL database, or use a `file:` URL on a persistent volume with a single server. The application creates its tables on first use. Registration, login and progress sync require a connection to the game server. The server stores a hash of the private Player ID.

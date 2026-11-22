@@ -1,6 +1,5 @@
-// app/page.tsx
-import BacteriaGame from './game/components/BacteriaGame';
+import PlayerEntry from './player/PlayerEntry';
 
 export default function Home() {
-  return <BacteriaGame />;
+  return <PlayerEntry />;
 }
