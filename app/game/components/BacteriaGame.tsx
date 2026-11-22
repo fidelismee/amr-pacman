@@ -6,7 +6,7 @@ import LoadingScreen from './Loading_Screen';
 import type { Player } from '../../player/types';
 import { useProgress } from '../../player/useProgress';
 import Cutscene from './cutscene'; 
-import { useState, useCallback, useRef, useEffect, type CSSProperties, type ReactNode } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, type CSSProperties, type ReactNode } from 'react';
 import Image from 'next/image';
 import { usePlatform, useShouldShowTouchControls, useShouldShowKeyboardInstructions } from '../../contexts/PlatformContext';
 import TouchController from '../../components/TouchController';
@@ -31,7 +31,27 @@ import { getEffectiveTier } from '../quiz/difficulty';
 // Constants
 const CELL_SIZE = 24;
 const POWER_UP_DURATION = 5000;
+const TICK_MS = 200; // one game step; the glide transition below uses the same value
 const INITIAL_ENEMY_DIRECTIONS: Direction[] = ['right', 'left', 'up', 'down'];
+
+// Scoreboard (persisted in the browser's localStorage)
+const SCOREBOARD_KEY = 'amr-busters-scoreboard';
+const PLAYER_NAME_KEY = 'amr-busters-player-name';
+const MAX_SCOREBOARD_ENTRIES = 10;
+const MAX_NAME_LENGTH = 12;
+
+// Difficulty tuning — adjust these to taste
+const INVINCIBILITY_MS = 10000;   // protection after being eaten (starts when play resumes)
+const LEVEL_START_GRACE_MS = 3000; // short protection at the start of every level
+
+type ScoreEntry = {
+  id: string;
+  name: string;
+  score: number;
+  level: number; // 1-based level reached
+  won: boolean;
+  date: string; // ISO string
+};
 
 // Positions an entity with a transitioned transform so single-cell moves glide
 // between tiles instead of snapping once per 200 ms game tick. Transform runs
@@ -69,7 +89,7 @@ const GlidingEntity = ({
         alignItems: 'center',
         justifyContent: 'center',
         transform: `translate3d(${x * cellSize}px, ${y * cellSize}px, 0)`,
-        transition: jumped ? 'none' : 'transform 200ms linear',
+        transition: jumped ? 'none' : `transform ${TICK_MS}ms linear`,
         ...style,
       }}
     >
@@ -125,6 +145,17 @@ const BacteriaGame = ({ player }: { player: Player }) => {
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   
   const [feedback, setFeedback] = useState<null | "correct" | "wrong">(null);
+
+  // Player name + scoreboard
+  const [playerName, setPlayerName] = useState(player.nickname);
+  const [nameInput, setNameInput] = useState('');
+  const [scoreboard, setScoreboard] = useState<ScoreEntry[]>([]);
+  const [lastEntryId, setLastEntryId] = useState<string | null>(null);
+  const scoreSavedRef = useRef(false);
+
+  // Post-eaten protection: ref is read by collision logic, state drives the visuals.
+  const [invincibleMs, setInvincibleMs] = useState(0);
+  const invincibleMsRef = useRef(0);
 
   // "Find the bacteria" aid shown right after a quiz question closes: a short
   // countdown keeps the game paused for a beat, and a pulsing locator ring
@@ -421,6 +452,9 @@ const BacteriaGame = ({ player }: { player: Player }) => {
     const isPoweredUp = poweredUpRef.current || justCollectedBoosterRef.current;
 
     if (!isPoweredUp) {
+      // Protected (just respawned / level start): antibiotics pass harmlessly.
+      if (invincibleMsRef.current > 0) return;
+
       // Any hit ends the run in one quiz — trigger it once, not per enemy.
       playEffect('function');
       triggerQuestion();
@@ -454,6 +488,12 @@ const BacteriaGame = ({ player }: { player: Player }) => {
     });
   };
 
+// Gives the bacterium a window where antibiotics can't catch it.
+const startInvincibility = (ms: number) => {
+  invincibleMsRef.current = ms;
+  setInvincibleMs(ms);
+};
+
 // Cancels any in-flight "find the bacteria" countdown/highlight. Called
 // whenever a new question fires, the level resets, or the component unmounts,
 // so overlapping countdowns from rapid consecutive hits can't stack up.
@@ -482,6 +522,8 @@ const startResumeCountdown = () => {
     setTimeout(() => {
       setResumeCountdown(null);
       setIsRunning(true);
+      // The 10s protection starts now, so the player gets the full window of play.
+      startInvincibility(INVINCIBILITY_MS);
     }, 3000)
   );
 
@@ -592,6 +634,9 @@ const handleAnswer = (selected: string) => {
     prevAntibioticPositionsRef.current = spawns.map((pos) => ({ ...pos }));
     poweredUpRef.current = false;
     justCollectedBoosterRef.current = false;
+    scoreSavedRef.current = false;
+    invincibleMsRef.current = LEVEL_START_GRACE_MS;
+    setInvincibleMs(LEVEL_START_GRACE_MS);
 
     if (resetScore) setScore(0);
     setLives(3);
@@ -677,13 +722,77 @@ const handleAnswer = (selected: string) => {
     };
   }, []);
 
+  // Load the saved scoreboard and last-used player name (client only).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SCOREBOARD_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setScoreboard(parsed);
+      }
+      const savedName = localStorage.getItem(PLAYER_NAME_KEY);
+      if (savedName) setNameInput(savedName);
+    } catch {
+      // localStorage unavailable (private mode, etc.) — scoreboard just won't persist
+    }
+  }, []);
+
+  // When a run ends (win or game over), record the score once.
+  useEffect(() => {
+    if (gameActive || !playerName || scoreSavedRef.current) return;
+    scoreSavedRef.current = true;
+    if (score <= 0) return;
+
+    const entry: ScoreEntry = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: playerName,
+      score,
+      level: currentLevelIndex + 1,
+      won: lives > 0,
+      date: new Date().toISOString(),
+    };
+    const next = [...scoreboard, entry]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, MAX_SCOREBOARD_ENTRIES);
+    setScoreboard(next);
+    setLastEntryId(entry.id);
+    try {
+      localStorage.setItem(SCOREBOARD_KEY, JSON.stringify(next));
+    } catch {
+      // ignore storage errors
+    }
+  }, [gameActive, playerName, score, lives, currentLevelIndex, scoreboard]);
+
+  const handleNameSubmit = () => {
+    const cleaned = nameInput.trim().slice(0, MAX_NAME_LENGTH);
+    if (!cleaned) return;
+    try {
+      localStorage.setItem(PLAYER_NAME_KEY, cleaned);
+    } catch {
+      // ignore storage errors
+    }
+    setPlayerName(cleaned);
+  };
+
+  const handleClearScoreboard = () => {
+    setScoreboard([]);
+    setLastEntryId(null);
+    try {
+      localStorage.removeItem(SCOREBOARD_KEY);
+    } catch {
+      // ignore storage errors
+    }
+  };
+
   // Controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore game controls while the loading screen / intro cutscene is up.
       // BacteriaGame stays mounted behind them, so without this Space during
       // the intro also unlocked audio and toggled the game running unseen.
-      if (isLoading || showCutscene) return;
+      // Also ignored until a player name is chosen (the name input needs
+      // Space / R as normal typing keys).
+      if (isLoading || showCutscene || !playerName) return;
 
       // Dev/test cheat: Ctrl+Alt+1/2/3 jumps to that level (works any time).
       if (e.ctrlKey && e.altKey && ['Digit1', 'Digit2', 'Digit3'].includes(e.code)) {
@@ -708,7 +817,7 @@ const handleAnswer = (selected: string) => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleDirectionChange, handlePauseToggle, handleRestart, jumpToLevel, isRunning, isLoading, showCutscene]);
+  }, [handleDirectionChange, handlePauseToggle, handleRestart, jumpToLevel, isRunning, isLoading, showCutscene, playerName]);
 
   // Game Loop — also paused while the loading screen / intro cutscene shows,
   // otherwise the game silently plays (and loses lives) behind the intro.
@@ -716,18 +825,21 @@ const handleAnswer = (selected: string) => {
     // Also gated on hasFocus so the game doesn't play itself (auto-moving and
     // losing lives) behind the "Click to Focus" overlay before the player has
     // interacted. On PWA/mobile hasFocus starts true, so play begins normally.
-    if (!isRunning || !gameActive || isLoading || showCutscene || !hasFocus) return;
+    if (!isRunning || !gameActive || isLoading || showCutscene || !hasFocus || !playerName) return;
 
+    // NOTE: this interval is intentionally re-created after each move (the deps
+    // below change every tick). That makes every step wait for the previous
+    // render to finish, so steps can never bunch up and make the sprites jump.
     const interval = setInterval(() => {
       // IMPORTANT: Store previous positions BEFORE movement for crossing collision detection
       prevBacteriaPositionRef.current = { ...bacteriaPositionRef.current };
       prevAntibioticPositionsRef.current = antibioticPositionsRef.current.map(pos => ({ ...pos }));
-      
+    
       moveBacteria();
       moveAntibiotics();
       if (poweredUp) {
         setPowerUpTimer(prev => {
-          const newTimer = prev <= 200 ? 0 : prev - 200;
+          const newTimer = prev <= TICK_MS ? 0 : prev - TICK_MS;
           if (newTimer === 0) {
             setPoweredUp(false);
             poweredUpRef.current = false; // IMPORTANT: Sync ref when power-up expires
@@ -736,13 +848,19 @@ const handleAnswer = (selected: string) => {
         });
       }
       checkCollisions();
-      
+    
       // Reset the justCollectedBoosterRef after collision check
       justCollectedBoosterRef.current = false;
-    }, 200);
+
+      // Count down protection (only ticks while the game is actually running).
+      if (invincibleMsRef.current > 0) {
+        invincibleMsRef.current = Math.max(0, invincibleMsRef.current - TICK_MS);
+        setInvincibleMs(invincibleMsRef.current);
+      }
+    }, TICK_MS);
 
     return () => clearInterval(interval);
-  }, [isRunning, gameActive, isLoading, showCutscene, hasFocus, bacteriaPosition, antibioticPositions, poweredUp, level, currentLevelIndex]);
+  }, [isRunning, gameActive, isLoading, showCutscene, hasFocus, bacteriaPosition, antibioticPositions, poweredUp, level, currentLevelIndex, playerName]);
 
   // Helpers — count nutrients and boosters in a single pass over the grid
   // rather than flattening it twice per render.
@@ -786,6 +904,74 @@ const handleAnswer = (selected: string) => {
     return `/assets/lives/live-${clampedLives}.png`;
   };
 
+  // Shared scoreboard rows (name screen, side panel, end-of-game overlay)
+  const renderScoreRows = (limit: number) => (
+    <ol className="space-y-0.5">
+      {scoreboard.slice(0, limit).map((entry, i) => {
+        const isLast = entry.id === lastEntryId;
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
+        return (
+          <li
+            key={entry.id}
+            className={`flex items-center justify-between gap-2 px-1.5 py-0.5 rounded text-xs ${
+              isLast ? 'bg-green-700/50 border border-green-500' : 'bg-gray-900/40'
+            }`}
+          >
+            <span className="flex items-center gap-1.5 min-w-0">
+              <span className="w-5 text-center shrink-0">{medal}</span>
+              <span className="truncate text-gray-200">{entry.name}</span>
+              {entry.won && <span title="Completed all levels">✅</span>}
+            </span>
+            <span className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[10px] text-gray-500">L{entry.level}</span>
+              <span className="font-bold text-green-400">{entry.score}</span>
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+
+  const lastRank = lastEntryId
+    ? scoreboard.findIndex((e) => e.id === lastEntryId) + 1
+    : 0;
+
+  // The maze only changes when a dot/booster is eaten (new `level` array) or the
+  // cell size changes, so build it once and reuse it across the 5 ticks/second.
+  const gridCells = useMemo(
+    () => (
+      <>
+                    {level.map((row, y) =>
+                      row.map((cell, x) => {
+                        let cellContent = null;
+                        let cellClass = "flex items-center justify-center relative";
+                        if (cell === 1) cellClass += " bg-gray-800/80 border-[0.5px] border-gray-700/30";
+                        else {
+                          if (cell === 0) {
+                            cellContent = <div className="w-1.5 h-1.5 rounded-full bg-green-500/80 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />;
+                          } else if (cell === 3) {
+                            cellContent = (
+                              <img
+                                src="/assets/resistance/resistance booster.png"
+                                alt="Resistance Booster"
+                                style={{
+                                  width: `${responsiveCellSize * 0.6}px`,
+                                  height: `${responsiveCellSize * 0.6}px`,
+                                  imageRendering: 'pixelated',
+                                  animation: 'pulse 1s infinite',
+                                }}
+                              />
+                            );
+                          }
+                        }
+                        return <div key={`${x}-${y}`} className={cellClass} style={{ width: responsiveCellSize, height: responsiveCellSize }}>{cellContent}</div>;
+                      })
+                    )}
+      </>
+    ),
+    [level, responsiveCellSize]
+  );
+
   // --- STEP C: RENDER LOADING SCREEN ---
   if (isLoading) {
     return (
@@ -806,6 +992,49 @@ const handleAnswer = (selected: string) => {
       />
     );
   }
+
+  // --- NAME ENTRY SCREEN (shown once, after the intro cutscene) ---
+  if (!playerName) {
+    return (
+      <div
+        className="min-h-dvh text-white flex items-center justify-center p-4 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/background.png')", backgroundAttachment: 'fixed' }}
+      >
+        <div className="w-full max-w-sm bg-gray-900/90 border-2 border-green-500 rounded-xl p-6 shadow-2xl">
+          <h2 className="text-xl font-bold text-green-300 text-center mb-1">🦠 Enter Your Name</h2>
+          <p className="text-xs text-gray-400 text-center mb-4">
+            Your score will be saved to the scoreboard.
+          </p>
+          <input
+            type="text"
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleNameSubmit();
+            }}
+            maxLength={MAX_NAME_LENGTH}
+            placeholder="Your name"
+            autoFocus
+            className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-600 focus:border-green-500 focus:outline-none text-white text-center mb-3"
+          />
+          <button
+            onClick={handleNameSubmit}
+            disabled={!nameInput.trim()}
+            className="w-full py-2 bg-green-600 hover:bg-green-500 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed rounded font-bold"
+          >
+            Start Game
+          </button>
+
+          {scoreboard.length > 0 && (
+            <div className="mt-4">
+              <h3 className="text-sm font-bold text-yellow-300 text-center mb-1">🏆 Top Scores</h3>
+              {renderScoreRows(5)}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
   return (
     <div 
   className="min-h-dvh max-h-dvh text-white touch-none overflow-hidden flex flex-col game-landscape-optimized bg-cover bg-center bg-no-repeat"
@@ -816,6 +1045,13 @@ const handleAnswer = (selected: string) => {
 >
       <div className="w-full max-w-6xl mx-auto flex-1 flex flex-col overflow-y-auto overflow-x-hidden safe-area-padding p-1 md:p-2 full-width-landscape">
         {saveFailed && <p role="status" className="bg-amber-950 px-2 py-1 text-center text-sm text-amber-200">Progress hasn’t synced. Keep the game open while it retries.</p>}
+        <style>{`
+          @keyframes bacteriaInvincibleBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+          }
+        `}</style>
+
         {/* Portrait mode warning for mobile PWA - More Compact */}
         {isPortrait && platform.isPWA && (
           <div className="mb-1 p-2 bg-yellow-900/50 border border-yellow-700 rounded-lg text-center">
@@ -876,32 +1112,7 @@ const handleAnswer = (selected: string) => {
                       gridTemplateRows: `repeat(${gridHeight}, ${responsiveCellSize}px)`,
                     }}
                   >
-                    {level.map((row, y) =>
-                      row.map((cell, x) => {
-                        let cellContent = null;
-                        let cellClass = "flex items-center justify-center relative";
-                        if (cell === 1) cellClass += " bg-gray-800/80 border-[0.5px] border-gray-700/30";
-                        else {
-                          if (cell === 0) {
-                            cellContent = <div className="w-1.5 h-1.5 rounded-full bg-green-500/80 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />;
-                          } else if (cell === 3) {
-                            cellContent = (
-                              <img
-                                src="/assets/resistance/resistance booster.png"
-                                alt="Resistance Booster"
-                                style={{
-                                  width: `${responsiveCellSize * 0.6}px`,
-                                  height: `${responsiveCellSize * 0.6}px`,
-                                  imageRendering: 'pixelated',
-                                  animation: 'pulse 1s infinite',
-                                }}
-                              />
-                            );
-                          }
-                        }
-                        return <div key={`${x}-${y}`} className={cellClass} style={{ width: responsiveCellSize, height: responsiveCellSize }}>{cellContent}</div>;
-                      })
-                    )}
+                    {gridCells}
                   </div>
 
                   {/* Entities Layer (Z-Index 10) */}
@@ -935,7 +1146,25 @@ const handleAnswer = (selected: string) => {
                         x={bacteriaPosition.x}
                         y={bacteriaPosition.y}
                         cellSize={responsiveCellSize}
+                        style={
+                          invincibleMs > 0
+                            ? {
+                                // Flash faster in the last 2s as a warning it's about to wear off
+                                animation: `bacteriaInvincibleBlink ${invincibleMs <= 2000 ? 250 : 500}ms ease-in-out infinite`,
+                              }
+                            : undefined
+                        }
                       >
+                        {invincibleMs > 0 && (
+                          <div
+                            className="absolute rounded-full border-2 border-yellow-300"
+                            style={{
+                              width: '140%',
+                              height: '140%',
+                              boxShadow: '0 0 8px rgba(250, 204, 21, 0.9)',
+                            }}
+                          />
+                        )}
                         <BacteriaRenderer
                           bacteria={bacteriaInstance}
                           scale={responsiveCellSize / 32}
@@ -1023,6 +1252,14 @@ const handleAnswer = (selected: string) => {
     </div>
   </div>
 )}
+{invincibleMs > 0 && resumeCountdown === null && !showQuestion && gameActive && (
+  <div className="fixed top-28 left-1/2 -translate-x-1/2 z-[55] pointer-events-none">
+    <div className="px-3 py-1 rounded-full text-xs font-bold shadow-2xl bg-yellow-400/90 text-black flex items-center gap-1.5">
+      <span>🛡️</span>
+      <span>Protected: {Math.ceil(invincibleMs / 1000)}s</span>
+    </div>
+  </div>
+)}
 {resumeCountdown !== null && (
   <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] pointer-events-none">
     <div className="px-4 py-2 rounded-full text-sm font-bold shadow-2xl bg-yellow-500 text-black animate-pulse flex items-center gap-2">
@@ -1051,8 +1288,22 @@ const handleAnswer = (selected: string) => {
                   )}
                   {!gameActive && (
                     <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[80] p-4">
-                      <div className="text-center">
-                        <h2 className="text-2xl font-bold mb-4 text-white">{gameMessage}</h2>
+                      <div className="text-center w-full max-w-xs">
+                        <h2 className="text-2xl font-bold mb-1 text-white">{gameMessage}</h2>
+                        <p className="text-sm text-gray-300 mb-3">
+                          {playerName} — Final score: <span className="font-bold text-green-400">{score}</span>
+                          {lastRank > 0 && (
+                            <span className="block text-yellow-300 text-xs mt-0.5">
+                              🏆 Rank #{lastRank} on the scoreboard
+                            </span>
+                          )}
+                        </p>
+                        {scoreboard.length > 0 && (
+                          <div className="bg-gray-800/90 border border-gray-700 rounded-lg p-2 mb-4 text-left max-h-[40vh] overflow-y-auto">
+                            <h3 className="text-sm font-bold text-yellow-300 text-center mb-1">🏆 Top Scores</h3>
+                            {renderScoreRows(MAX_SCOREBOARD_ENTRIES)}
+                          </div>
+                        )}
                         <button onClick={handleRestartFromStart} className="px-6 py-2 bg-green-600 rounded font-bold">Try Again</button>
                       </div>
                     </div>
@@ -1068,6 +1319,20 @@ const handleAnswer = (selected: string) => {
             {/* Stats Panel - More Compact */}
             <div className="bg-gray-800 p-2 rounded-lg border border-gray-700 game-stats-compact">
               <h3 className="text-sm font-bold mb-1 text-green-300 text-center">Game Stats</h3>
+              <div className="flex items-center justify-center gap-1 text-xs text-gray-200 mb-0.5">
+                <span>👤</span>
+                <span className="font-bold truncate max-w-[8rem]">{playerName}</span>
+                <button
+                  onClick={() => {
+                    setIsRunning(false);
+                    setNameInput(playerName);
+                    setPlayerName('');
+                  }}
+                  className="text-[10px] text-gray-500 hover:text-gray-300 underline"
+                >
+                  change
+                </button>
+              </div>
               <div className="text-[10px] text-center text-gray-400 mb-1">{currentConfig.name}</div>
               <div className="flex justify-between mb-0.5">
                 <span className="text-gray-400 text-xs">Score</span>
@@ -1104,6 +1369,28 @@ const handleAnswer = (selected: string) => {
               <div className="text-[10px] text-center text-gray-500 mt-1">
                 Red = Enemy • Blue = Booster
               </div>
+            </div>
+
+            {/* Scoreboard */}
+            <div className="bg-gray-800 p-2 rounded-lg border border-gray-700">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-sm font-bold text-yellow-300">🏆 Scoreboard</h3>
+                {scoreboard.length > 0 && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Clear all saved scores?')) handleClearScoreboard();
+                    }}
+                    className="text-[10px] text-gray-500 hover:text-red-400 underline"
+                  >
+                    clear
+                  </button>
+                )}
+              </div>
+              {scoreboard.length === 0 ? (
+                <p className="text-[10px] text-gray-500 text-center py-1">No scores yet — be the first!</p>
+              ) : (
+                renderScoreRows(5)
+              )}
             </div>
 
             {/* Platform-specific controls - More Compact */}
