@@ -3,6 +3,8 @@
 "use client";
 
 import LoadingScreen from './Loading_Screen'; 
+import type { Player } from '../../player/types';
+import { useProgress } from '../../player/useProgress';
 import Cutscene from './cutscene'; 
 import { useState, useCallback, useRef, useEffect, useMemo, type CSSProperties, type ReactNode } from 'react';
 import Image from 'next/image';
@@ -96,7 +98,7 @@ const GlidingEntity = ({
   );
 };
 
-const BacteriaGame = () => {
+const BacteriaGame = ({ player }: { player: Player }) => {
   // Platform detection
   const platform = usePlatform();
   const showTouchControls = useShouldShowTouchControls();
@@ -130,6 +132,9 @@ const BacteriaGame = () => {
   const bacteriaPositionRef = useRef<Position>(LEVELS[0].playerStart);
   const antibioticPositionsRef = useRef<Position[]>([]);
   const [gameMessage, setGameMessage] = useState<string>('');
+  const clearedLevels = levelComplete ? currentLevelIndex + 1
+    : !gameActive && lives > 0 && currentLevelIndex === LEVELS.length - 1 ? LEVELS.length : 0;
+  const { recordAnswer, saveFailed } = useProgress(player.id, score, clearedLevels);
   // Auto-focus for PWA/mobile, manual focus for desktop
   const [hasFocus, setHasFocus] = useState(platform.isPWA || platform.isMobile);
   const [isRunning, setIsRunning] = useState(true);
@@ -142,7 +147,7 @@ const BacteriaGame = () => {
   const [feedback, setFeedback] = useState<null | "correct" | "wrong">(null);
 
   // Player name + scoreboard
-  const [playerName, setPlayerName] = useState('');
+  const [playerName, setPlayerName] = useState(player.nickname);
   const [nameInput, setNameInput] = useState('');
   const [scoreboard, setScoreboard] = useState<ScoreEntry[]>([]);
   const [lastEntryId, setLastEntryId] = useState<string | null>(null);
@@ -551,6 +556,7 @@ const triggerQuestion = () => {
 const handleAnswer = (selected: string) => {
   if (!currentQuestion) return;
 
+  recordAnswer(currentQuestion.question, selected);
   const correct = selected === currentQuestion.answer;
 
   if (correct) {
@@ -703,8 +709,11 @@ const handleAnswer = (selected: string) => {
 
   // Initial Load
   useEffect(() => {
-    initializeGame();
-  }, [initializeGame]);
+    const resume = player.clearedLevels < LEVELS.length ? player.clearedLevels : 0;
+    setCurrentLevelIndex(resume);
+    initializeLevel(resume, true);
+    setScore(resume ? player.checkpointScore : 0);
+  }, [player, initializeLevel]);
 
   // Cleanup any pending "find the bacteria" timers on unmount
   useEffect(() => {
@@ -1035,6 +1044,7 @@ const handleAnswer = (selected: string) => {
   }}
 >
       <div className="w-full max-w-6xl mx-auto flex-1 flex flex-col overflow-y-auto overflow-x-hidden safe-area-padding p-1 md:p-2 full-width-landscape">
+        {saveFailed && <p role="status" className="bg-amber-950 px-2 py-1 text-center text-sm text-amber-200">Progress hasn’t synced. Keep the game open while it retries.</p>}
         <style>{`
           @keyframes bacteriaInvincibleBlink {
             0%, 100% { opacity: 1; }
